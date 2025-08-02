@@ -22,51 +22,41 @@
   </script>
 </head>
 <body class="bg-gray-900 text-white p-6">
-  <h1 class="text-2xl font-bold mb-4">📋 Aktueller Status der Songwünsche</h1>
-  <button onclick="location.href='index.html'" class="mb-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">🔙 Zurück zur Startseite</button>
+  <h1 class="text-2xl font-bold mb-4">🎵 Wunsch einreichen</h1>
 
-  <div class="mb-8">
-    <h2 class="text-xl font-semibold mb-2">🎶 Gespielte Wünsche</h2>
-    <div id="gespieltWishes" class="space-y-4"></div>
-  </div>
+  <form id="wishForm" class="space-y-4">
+    <input type="text" id="title" placeholder="Songtitel" required class="w-full p-2 rounded text-black" />
+    <input type="text" id="artist" placeholder="Interpret" required class="w-full p-2 rounded text-black" />
+    <input type="url" id="link" placeholder="YouTube/Spotify-Link (optional)" class="w-full p-2 rounded text-black" />
+    <textarea id="comment" placeholder="Kommentar (optional)" class="w-full p-2 rounded text-black"></textarea>
+    <button type="submit" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">✅ Wunsch absenden</button>
+  </form>
 
-  <div class="mb-8">
-    <h2 class="text-xl font-semibold mb-2">❌ Abgelehnte Wünsche</h2>
-    <div id="abgelehntWishes" class="space-y-4"></div>
-  </div>
+  <button onclick="location.href='status.html'" class="mt-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">📄 Bisherige Wünsche anzeigen</button>
+  <button onclick="location.href='admin.html'" class="fixed bottom-4 right-4 bg-yellow-600 px-4 py-2 rounded-full hover:bg-yellow-700">🔐 Admin Login</button>
 
   <script>
-    const gespieltDiv = document.getElementById("gespieltWishes");
-    const abgelehntDiv = document.getElementById("abgelehntWishes");
+    const form = document.getElementById("wishForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value;
+      const artist = document.getElementById("artist").value;
+      const link = document.getElementById("link").value;
+      const comment = document.getElementById("comment").value;
 
-    function renderWish(data) {
-      const div = document.createElement("div");
-      div.className = "bg-gray-800 p-4 rounded shadow";
-      div.innerHTML = `
-        <p><strong>${data.title}</strong> – ${data.artist}</p>
-        ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
-      `;
-      return div;
-    }
-
-    db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-      gespieltDiv.innerHTML = "";
-      abgelehntDiv.innerHTML = "";
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.status === "gespielt") {
-          gespieltDiv.appendChild(renderWish(data));
-        } else if (data.status.startsWith("abgelehnt")) {
-          const div = document.createElement("div");
-          div.className = "bg-gray-800 p-4 rounded shadow";
-          div.innerHTML = `
-            <p><strong>${data.title}</strong> – ${data.artist}</p>
-            ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
-            <p class="text-sm italic mt-1">Grund: ${data.status.split(":"[1])}</p>
-          `;
-          abgelehntDiv.appendChild(div);
-        }
+      await db.collection("wuensche").add({
+        title,
+        artist,
+        link,
+        comment,
+        status: "offen",
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        upvotes: 0,
+        downvotes: 0
       });
+
+      form.reset();
+      alert("Wunsch wurde eingereicht!");
     });
   </script>
 </body>
