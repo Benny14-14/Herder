@@ -61,10 +61,18 @@
       const data = doc.data();
       const div = document.createElement("div");
       div.className = "bg-gray-800 p-4 rounded shadow";
+
+      const votesInfo = `
+        <p class="mt-1 text-sm text-yellow-300">
+          👍 ${data.upvotes || 0}  |  👎 ${data.downvotes || 0}
+        </p>
+      `;
+
       div.innerHTML = `
         <p><strong>${data.title}</strong> – ${data.artist}</p>
         ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
         ${data.reason ? `<p class="text-sm italic mt-1">${data.reason}</p>` : ""}
+        ${votesInfo}
       `;
 
       if (data.status === "offen") {
