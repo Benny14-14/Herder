@@ -86,7 +86,7 @@
     const content = document.getElementById("content");
 
     // ==========================
-    // Prüfen, ob schon eingeloggt
+    // Funktionen um Anzeige zu wechseln
     // ==========================
     function showAdminPanel(username) {
       loginContainer.classList.add("hidden");
@@ -102,12 +102,17 @@
       loginForm.reset();
     }
 
+    // ==========================
+    // Prüfen, ob User eingeloggt ist (lokal)
+    // ==========================
     const loggedInUserId = localStorage.getItem("loggedInUserId");
     const loggedInUsername = localStorage.getItem("loggedInUsername");
 
     if (loggedInUserId && loggedInUsername) {
+      // Wenn eingeloggt: Admin-Bereich zeigen
       showAdminPanel(loggedInUsername);
     } else {
+      // Wenn nicht eingeloggt: Login-Form zeigen (keine Weiterleitung)
       showLogin();
     }
 
