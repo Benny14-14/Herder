@@ -3,42 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin Panel – Herdernacht</title>
+  <title>Adminbereich – Herdernacht</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-</head>
-<body class="bg-gray-900 text-white min-h-screen p-6">
-
-  <div class="max-w-6xl mx-auto">
-
-    <h1 class="text-3xl font-bold mb-6">🛠 Admin Panel – Songwünsche</h1>
-
-    <input
-      type="text"
-      id="filterInput"
-      placeholder="Filtern nach Song oder User..."
-      class="mb-4 w-full p-2 rounded bg-gray-700 text-white"
-    />
-
-    <div class="overflow-x-auto">
-      <table class="min-w-full table-auto border-collapse border border-gray-700">
-        <thead>
-          <tr class="bg-gray-800 text-left">
-            <th class="border border-gray-600 px-4 py-2">Song</th>
-            <th class="border border-gray-600 px-4 py-2">User</th>
-            <th class="border border-gray-600 px-4 py-2">Kommentar</th>
-            <th class="border border-gray-600 px-4 py-2">Aktion</th>
-          </tr>
-        </thead>
-        <tbody id="wuenscheTableBody">
-          <tr><td colspan="4" class="text-center p-4">Lade Daten...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-  </div>
-
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
@@ -49,94 +17,205 @@
       appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
       measurementId: "G-HR07N6LXGN"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+  </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
 
-    const tableBody = document.getElementById("wuenscheTableBody");
-    const filterInput = document.getElementById("filterInput");
+  <div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">🎧 Adminbereich – Songwünsche verwalten</h1>
 
-    let wuenscheData = [];
-    let wuenscheDocs = []; // Array für Dokument-IDs
+    <!-- Login-Bereich -->
+    <div id="loginArea" class="max-w-md mx-auto bg-gray-800 p-6 rounded shadow">
+      <h2 class="text-xl font-semibold mb-4">🔐 Login</h2>
+      <form id="loginForm" class="space-y-4">
+        <input
+          type="text"
+          id="usernameInput"
+          placeholder="Benutzername"
+          required
+          class="w-full p-2 rounded text-black"
+          autocomplete="username"
+        />
+        <input
+          type="password"
+          id="passwordInput"
+          placeholder="Passwort"
+          required
+          class="w-full p-2 rounded text-black"
+          autocomplete="current-password"
+        />
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded">Login</button>
+      </form>
+      <p id="loginError" class="mt-2 text-red-500 hidden">Ungültiger Benutzername oder Passwort.</p>
+    </div>
 
-    async function loadWuensche() {
-      try {
-        const snapshot = await db.collection("wuensche").get();
+    <!-- Admin-Content -->
+    <div id="adminContent" class="hidden">
 
-        if (snapshot.empty) {
-          tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4">Keine Wünsche gefunden.</td></tr>`;
-          return;
-        }
+      <div class="mb-6 flex justify-between items-center">
+        <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Logout</button>
+        <a href="konto.html" class="text-blue-400 hover:underline">👤 Konten verwalten</a>
+      </div>
 
-        wuenscheData = snapshot.docs.map(doc => doc.data());
-        wuenscheDocs = snapshot.docs.map(doc => doc.id);
+      <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
+      <div id="pendingList" class="space-y-4"></div>
 
-        renderTable(wuenscheData);
+      <h2 class="text-xl font-semibold mt-10 mb-4">✅ Bearbeitete Wünsche</h2>
+      <div id="processedList" class="space-y-4"></div>
+    </div>
+  </div>
 
-      } catch (error) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500">Fehler beim Laden: ${error.message}</td></tr>`;
+  <script>
+    const loginArea = document.getElementById("loginArea");
+    const adminContent = document.getElementById("adminContent");
+    const loginForm = document.getElementById("loginForm");
+    const usernameInput = document.getElementById("usernameInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const loginError = document.getElementById("loginError");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    let currentUser = null;
+
+    // Funktion zum Login: prüft User in DB
+    async function login(username, password) {
+      const userDoc = await db.collection("users").doc(username).get();
+      if (!userDoc.exists) return false;
+      const data = userDoc.data();
+      if (data.password === password) {
+        currentUser = username;
+        // LastLogin updaten
+        await db.collection("users").doc(username).update({
+          lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+          online: true
+        });
+        return true;
       }
+      return false;
     }
 
-    function renderTable(data) {
-      if (data.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4">Keine passenden Ergebnisse.</td></tr>`;
-        return;
+    // Logout Funktion
+    async function logout() {
+      if (currentUser) {
+        await db.collection("users").doc(currentUser).update({ online: false });
+        currentUser = null;
       }
-
-      tableBody.innerHTML = data.map((wunsch, i) => `
-        <tr class="border border-gray-700 hover:bg-gray-700">
-          <td class="border border-gray-600 px-4 py-2">${escapeHtml(wunsch.song || "")}</td>
-          <td class="border border-gray-600 px-4 py-2">${escapeHtml(wunsch.user || "")}</td>
-          <td class="border border-gray-600 px-4 py-2">${escapeHtml(wunsch.kommentar || "")}</td>
-          <td class="border border-gray-600 px-4 py-2 space-x-2">
-            <button onclick="handleWunsch('${wuenscheDocs[i]}', true)" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded">Annehmen</button>
-            <button onclick="handleWunsch('${wuenscheDocs[i]}', false)" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded">Ablehnen</button>
-          </td>
-        </tr>
-      `).join("");
+      adminContent.classList.add("hidden");
+      loginArea.classList.remove("hidden");
+      loginForm.reset();
     }
 
-    async function handleWunsch(docId, accepted) {
-      try {
-        // Beispiel: Wunsch-Dokument löschen oder Status setzen
-        if (accepted) {
-          // z.B. Status "angenommen" setzen
-          await db.collection("wuensche").doc(docId).update({ status: "angenommen" });
-          alert("Wunsch angenommen!");
-        } else {
-          // Wunsch löschen
-          await db.collection("wuensche").doc(docId).delete();
-          alert("Wunsch abgelehnt und gelöscht!");
-        }
-        // Tabelle aktualisieren
-        loadWuensche();
-      } catch (error) {
-        alert("Fehler: " + error.message);
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginError.classList.add("hidden");
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      const success = await login(username, password);
+      if (success) {
+        loginArea.classList.add("hidden");
+        adminContent.classList.remove("hidden");
+        loadWishes();
+      } else {
+        loginError.classList.remove("hidden");
       }
-    }
-
-    function escapeHtml(text) {
-      if (!text) return "";
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    filterInput.addEventListener("input", () => {
-      const filterValue = filterInput.value.toLowerCase();
-      const filtered = wuenscheData.filter(wunsch => {
-        const song = (wunsch.song || "").toLowerCase();
-        const user = (wunsch.user || "").toLowerCase();
-        return song.includes(filterValue) || user.includes(filterValue);
-      });
-      renderTable(filtered);
     });
 
-    loadWuensche();
+    logoutBtn.onclick = logout;
+
+    // Lade Songwünsche (wie gehabt)
+    async function loadWishes() {
+      const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
+      const pendingList = document.getElementById("pendingList");
+      const processedList = document.getElementById("processedList");
+      pendingList.innerHTML = "";
+      processedList.innerHTML = "";
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const container = document.createElement("div");
+        container.className = "bg-gray-800 p-4 rounded shadow";
+
+        let statusText = "";
+        if (data.status === "abgelehnt" && data.reason) {
+          statusText = `<span class='text-red-400 font-semibold'>Status: Abgelehnt: ${data.reason}</span>`;
+        } else if (data.status === "angenommen") {
+          statusText = `<span class='text-green-400 font-semibold'>Status: Angenommen</span>`;
+        } else if (data.status === "offen") {
+          statusText = `<span class='text-yellow-400 font-semibold'>Status: Offen</span>`;
+        }
+
+        container.innerHTML = `
+          <p><strong>${data.title}</strong> von ${data.artist}</p>
+          ${data.link ? `<p>🔗 <a href="${data.link}" target="_blank" class="text-blue-400 underline">Link</a></p>` : ""}
+          ${data.comment ? `<p>💬 ${data.comment}</p>` : ""}
+          <p>👍 ${data.upvotes} / 👎 ${data.downvotes}</p>
+          <p>${statusText}</p>
+        `;
+
+        if (data.status === "offen") {
+          const acceptBtn = document.createElement("button");
+          acceptBtn.textContent = "✅ Annehmen";
+          acceptBtn.className = "mt-2 mr-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded";
+          acceptBtn.onclick = async () => {
+            await db.collection("wuensche").doc(doc.id).update({ status: "angenommen", reason: firebase.firestore.FieldValue.delete() });
+            loadWishes();
+          };
+
+          const declineBtn = document.createElement("button");
+          declineBtn.textContent = "❌ Ablehnen";
+          declineBtn.className = "mt-2 mr-2 bg-red-600 hover:bg-red-700 px-2 py-1 rounded";
+
+          const reasonSelect = document.createElement("select");
+          reasonSelect.className = "mt-2 p-1 text-black rounded hidden border border-gray-300";
+          ["Unangemessen", "Passt nicht zur Playlist", "Zu laut", "Zuviel Bass"].forEach(reason => {
+            reasonSelect.add(new Option(reason, reason));
+          });
+
+          const saveBtn = document.createElement("button");
+          saveBtn.textContent = "Speichern";
+          saveBtn.className = "ml-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded hidden";
+
+          declineBtn.onclick = () => {
+            reasonSelect.classList.remove("hidden");
+            saveBtn.classList.remove("hidden");
+          };
+
+          saveBtn.onclick = async () => {
+            const selectedReason = reasonSelect.value;
+            await db.collection("wuensche").doc(doc.id).update({ status: "abgelehnt", reason: selectedReason });
+            loadWishes();
+          };
+
+          container.appendChild(acceptBtn);
+          container.appendChild(declineBtn);
+          container.appendChild(reasonSelect);
+          container.appendChild(saveBtn);
+          pendingList.appendChild(container);
+        } else {
+          const moveBackBtn = document.createElement("button");
+          moveBackBtn.textContent = "🔁 Zurückstellen";
+          moveBackBtn.className = "mt-2 mr-2 bg-yellow-600 hover:bg-yellow-700 px-2 py-1 rounded";
+          moveBackBtn.onclick = async () => {
+            await db.collection("wuensche").doc(doc.id).update({ status: "offen" });
+            loadWishes();
+          };
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "🗑️ Löschen";
+          deleteBtn.className = "mt-2 bg-red-600 hover:bg-red-700 px-2 py-1 rounded";
+          deleteBtn.onclick = async () => {
+            await db.collection("wuensche").doc(doc.id).delete();
+            loadWishes();
+          };
+
+          container.appendChild(moveBackBtn);
+          container.appendChild(deleteBtn);
+          processedList.appendChild(container);
+        }
+      });
+    }
   </script>
+
 </body>
 </html>
