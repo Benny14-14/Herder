@@ -34,122 +34,124 @@
   </div>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
-      authDomain: "herder-7dd17.firebaseapp.com",
-      projectId: "herder-7dd17",
-      storageBucket: "herder-7dd17.firebasestorage.app",
-      messagingSenderId: "472463332211",
-      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
-      measurementId: "G-HR07N6LXGN"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+  const firebaseConfig = {
+    apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+    authDomain: "herder-7dd17.firebaseapp.com",
+    projectId: "herder-7dd17",
+    storageBucket: "herder-7dd17.firebasestorage.app",
+    messagingSenderId: "472463332211",
+    appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+    measurementId: "G-HR07N6LXGN"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-    const admin = "herdernacht2025"; // Ändere bei Bedarf
+  const adminPass = "herdernacht2025"; // Dein Adminpasswort
 
-    function checkLogin() {
-      const entered = document.getElementById("adminword").value;
-      if (entered === admin) {
-        document.getElementById("loginView").classList.add("hidden");
-        document.getElementById("adminView").classList.remove("hidden");
-        loadWishes();
-      } else {
-        alert("Falsches wort");
-      }
+  function checkLogin() {
+    const entered = document.getElementById("adminPassword").value;
+    if (entered === adminPass) {
+      document.getElementById("loginView").classList.add("hidden");
+      document.getElementById("adminView").classList.remove("hidden");
+      loadWishes();
+    } else {
+      alert("Falsches Passwort");
     }
+  }
 
-    async function loadWishes() {
-      const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
-      const openDiv = document.getElementById("openWishes");
-      const processedDiv = document.getElementById("processedWishes");
-      openDiv.innerHTML = "";
-      processedDiv.innerHTML = "";
+  async function loadWishes() {
+    const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
+    const openDiv = document.getElementById("openWishes");
+    const processedDiv = document.getElementById("processedWishes");
+    openDiv.innerHTML = "";
+    processedDiv.innerHTML = "";
 
-      snapshot.forEach(doc => {
-        const wish = doc.data();
-        const div = document.createElement("div");
-        div.className = "bg-gray-800 p-4 rounded shadow";
+    snapshot.forEach(doc => {
+      const wish = doc.data();
+      const div = document.createElement("div");
+      div.className = "bg-gray-800 p-4 rounded shadow";
 
-        const info = `
-          <p><strong>${wish.title}</strong> von <em>${wish.artist}</em></p>
-          ${wish.link ? `<p>🔗 <a href="${wish.link}" class="text-blue-400" target="_blank">Link</a></p>` : ""}
-          ${wish.comment ? `<p>💬 ${wish.comment}</p>` : ""}
-          <p>👍 ${wish.upvotes || 0} | 👎 ${wish.downvotes || 0}</p>
-          ${wish.status === "abgelehnt" && wish.ablehnungsgrund ? `<p class="text-red-400">❌ Grund: ${wish.ablehnungsgrund}</p>` : ""}
+      const info = `
+        <p><strong>${wish.title}</strong> von <em>${wish.artist}</em></p>
+        ${wish.link ? `<p>🔗 <a href="${wish.link}" class="text-blue-400" target="_blank">Link</a></p>` : ""}
+        ${wish.comment ? `<p>💬 ${wish.comment}</p>` : ""}
+        <p>👍 ${wish.upvotes || 0} | 👎 ${wish.downvotes || 0}</p>
+        ${wish.status === "abgelehnt" && wish.ablehnungsgrund ? `<p class="text-red-400">❌ Grund: ${wish.ablehnungsgrund}</p>` : ""}
+      `;
+
+      div.innerHTML = info;
+
+      if (wish.status === "offen") {
+        const select = document.createElement("select");
+        select.className = "mt-2 p-2 text-black rounded";
+        select.innerHTML = `
+          <option value="">Aktion wählen</option>
+          <option value="angenommen">✅ Annehmen</option>
+          <option value="abgelehnt">❌ Ablehnen</option>
+          <option value="geloescht">🗑️ Löschen</option>
         `;
 
-        div.innerHTML = info;
+        const reasonSelect = document.createElement("select");
+        reasonSelect.className = "mt-2 p-2 text-black rounded hidden";
+        reasonSelect.innerHTML = `
+          <option value="">Grund wählen</option>
+          <option value="Unangemessen">Unangemessen</option>
+          <option value="Passt nicht zur Playlist">Passt nicht zur Playlist</option>
+          <option value="Zu laut">Zu laut</option>
+          <option value="Zu viel Bass">Zu viel Bass</option>
+        `;
 
-        if (wish.status === "offen") {
-          const select = document.createElement("select");
-          select.className = "mt-2 p-2 text-black rounded";
-          select.innerHTML = `
-            <option value="">Aktion wählen</option>
-            <option value="angenommen">✅ Annehmen</option>
-            <option value="abgelehnt">❌ Ablehnen</option>
-            <option value="geloescht">🗑️ Löschen</option>
-          `;
-          const reasonSelect = document.createElement("select");
-          reasonSelect.className = "mt-2 p-2 text-black rounded hidden";
-          reasonSelect.innerHTML = `
-            <option value="">Grund wählen</option>
-            <option value="Unangemessen">Unangemessen</option>
-            <option value="t nicht zur Playlist">t nicht zur Playlist</option>
-            <option value="Zu laut">Zu laut</option>
-            <option value="Zu viel Bass">Zu viel Bass</option>
-          `;
-
-          select.addEventListener("change", async () => {
-            if (select.value === "angenommen") {
-              await db.collection("wuensche").doc(doc.id).update({ status: "angenommen" });
-              loadWishes();
-            } else if (select.value === "abgelehnt") {
-              reasonSelect.classList.remove("hidden");
-            } else if (select.value === "geloescht") {
-              await db.collection("wuensche").doc(doc.id).delete();
-              loadWishes();
-            }
-          });
-
-          reasonSelect.addEventListener("change", async () => {
-            if (reasonSelect.value) {
-              await db.collection("wuensche").doc(doc.id).update({
-                status: "abgelehnt",
-                ablehnungsgrund: reasonSelect.value
-              });
-              loadWishes();
-            }
-          });
-
-          div.appendChild(select);
-          div.appendChild(reasonSelect);
-          openDiv.appendChild(div);
-        } else {
-          const processedSelect = document.createElement("select");
-          processedSelect.className = "mt-2 p-2 text-black rounded";
-          processedSelect.innerHTML = `
-            <option value="">Status ändern</option>
-            <option value="offen">🕒 Wieder offen</option>
-            <option value="gespielt">✅ Gespielt</option>
-            <option value="geloescht">🗑️ Löschen</option>
-          `;
-          processedSelect.addEventListener("change", async () => {
-            if (processedSelect.value === "geloescht") {
-              await db.collection("wuensche").doc(doc.id).delete();
-            } else {
-              await db.collection("wuensche").doc(doc.id).update({
-                status: processedSelect.value
-              });
-            }
+        select.addEventListener("change", async () => {
+          if (select.value === "angenommen") {
+            await db.collection("wuensche").doc(doc.id).update({ status: "angenommen" });
             loadWishes();
-          });
+          } else if (select.value === "abgelehnt") {
+            reasonSelect.classList.remove("hidden");
+          } else if (select.value === "geloescht") {
+            await db.collection("wuensche").doc(doc.id).delete();
+            loadWishes();
+          }
+        });
 
-          div.appendChild(processedSelect);
-          processedDiv.appendChild(div);
-        }
-      });
-    }
-  </script>
+        reasonSelect.addEventListener("change", async () => {
+          if (reasonSelect.value) {
+            await db.collection("wuensche").doc(doc.id).update({
+              status: "abgelehnt",
+              ablehnungsgrund: reasonSelect.value
+            });
+            loadWishes();
+          }
+        });
+
+        div.appendChild(select);
+        div.appendChild(reasonSelect);
+        openDiv.appendChild(div);
+      } else {
+        const processedSelect = document.createElement("select");
+        processedSelect.className = "mt-2 p-2 text-black rounded";
+        processedSelect.innerHTML = `
+          <option value="">Status ändern</option>
+          <option value="offen">🕒 Wieder offen</option>
+          <option value="gespielt">✅ Gespielt</option>
+          <option value="geloescht">🗑️ Löschen</option>
+        `;
+        processedSelect.addEventListener("change", async () => {
+          if (processedSelect.value === "geloescht") {
+            await db.collection("wuensche").doc(doc.id).delete();
+          } else {
+            await db.collection("wuensche").doc(doc.id).update({
+              status: processedSelect.value
+            });
+          }
+          loadWishes();
+        });
+
+        div.appendChild(processedSelect);
+        processedDiv.appendChild(div);
+      }
+    });
+  }
+</script>
+
 </body>
 </html>
