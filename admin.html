@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin – Herdernacht Songwünsche</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Herdernacht Songwünsche - Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script>
@@ -19,141 +19,137 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+
+    // Hier das Admin-Passwort definieren:
+    const ADMIN_PASSWORD = "deinGeheimesPasswort"; // <- Bitte anpassen
   </script>
 </head>
-<body class="bg-gray-900 text-white p-6">
-  <h1 class="text-2xl font-bold mb-4">🔒 Adminbereich – Songwünsche verwalten</h1>
+<body class="bg-gray-900 text-white min-h-screen p-6 flex flex-col items-center">
 
-  <!-- Toggle für Zufallsdesign -->
-  <div class="mb-6 flex items-center space-x-4">
-    <label for="designToggle" class="text-lg">🎨 Zufallsdesign auf Startseite aktivieren:</label>
-    <input type="checkbox" id="designToggle" class="h-6 w-12 rounded cursor-pointer" />
+  <div id="loginContainer" class="max-w-md w-full bg-gray-800 p-6 rounded shadow-lg">
+    <h2 class="text-2xl font-bold mb-4 text-center">Admin Login</h2>
+    <form id="loginForm" class="space-y-4">
+      <input type="password" id="password" placeholder="Admin Passwort" required autocomplete="off" class="w-full p-2 rounded text-black" />
+      <button type="submit" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full">Anmelden</button>
+    </form>
+    <p id="loginError" class="text-red-500 mt-2 text-center"></p>
   </div>
 
-  <button onclick="location.href='index.html'" class="mb-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">🔙 Zurück zur Startseite</button>
-
-  <div class="mb-8">
-    <h2 class="text-xl font-semibold mb-2">🆕 Neue Wünsche</h2>
-    <div id="newWishes" class="space-y-4"></div>
-  </div>
-
-  <div>
-    <h2 class="text-xl font-semibold mb-2">✅ Bearbeitete Wünsche</h2>
-    <div id="processedWishes" class="space-y-4"></div>
+  <div id="adminContent" class="hidden w-full max-w-4xl">
+    <h1 class="text-3xl font-bold mb-6 text-center">🎵 Adminbereich</h1>
+    <button id="logoutBtn" class="mb-6 bg-red-600 px-4 py-2 rounded hover:bg-red-700">Logout</button>
+    <div id="wunschListe" class="space-y-4"></div>
   </div>
 
   <script>
-    const newWishesDiv = document.getElementById("newWishes");
-    const processedDiv = document.getElementById("processedWishes");
-    const designToggle = document.getElementById("designToggle");
+    const loginContainer = document.getElementById("loginContainer");
+    const adminContent = document.getElementById("adminContent");
+    const loginForm = document.getElementById("loginForm");
+    const loginError = document.getElementById("loginError");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const wunschListe = document.getElementById("wunschListe");
 
-    const ablehnGruende = [
-      "Unangemessen", "Passt nicht zur Playlist", "Zu laut", "Zu viel Bass", "Technisch problematisch"
-    ];
-
-    // Funktion für Dropdowns
-    function createDropdown(options, selected, onchange) {
-      const select = document.createElement("select");
-      select.className = "bg-gray-800 p-1 text-white rounded border border-gray-600 ml-2";
-      options.forEach(opt => {
-        const o = document.createElement("option");
-        o.value = opt;
-        o.textContent = opt;
-        if (opt === selected) o.selected = true;
-        select.appendChild(o);
-      });
-      select.onchange = onchange;
-      return select;
+    // Einfacher "Login"-Status mit SessionStorage (verlässt Login bei Seite schließen)
+    function isLoggedIn() {
+      return sessionStorage.getItem("adminLoggedIn") === "true";
+    }
+    function setLoggedIn(status) {
+      sessionStorage.setItem("adminLoggedIn", status ? "true" : "false");
     }
 
-    // Wünsche rendern
-    function renderWish(doc) {
+    // Wünsche anzeigen
+    function renderWunsch(doc) {
       const data = doc.data();
       const div = document.createElement("div");
       div.className = "bg-gray-800 p-4 rounded shadow";
-      let statusText = data.status;
 
-      if (data.status && data.status.startsWith("abgelehnt:")) {
-        statusText = "Abgelehnt: " + data.status.split(":")[1].trim();
+      const title = document.createElement("h2");
+      title.className = "text-xl font-semibold";
+      title.textContent = data.title + " — " + data.artist;
+      div.appendChild(title);
+
+      if (data.link) {
+        const link = document.createElement("a");
+        link.href = data.link;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.className = "text-blue-400 hover:underline";
+        link.textContent = "Link anhören";
+        div.appendChild(link);
       }
 
-      div.innerHTML = `
-        <p><strong>${data.title}</strong> – ${data.artist}</p>
-        ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
-        ${data.reason ? `<p class="text-sm italic mt-1">${data.reason}</p>` : ""}
-        <p class="mt-2 font-semibold">Status: ${statusText}</p>
-      `;
-
-      if (data.status === "offen") {
-        const acceptBtn = document.createElement("button");
-        acceptBtn.textContent = "✅ Annehmen";
-        acceptBtn.className = "bg-green-600 px-2 py-1 rounded mr-2 mt-2 hover:bg-green-700";
-        acceptBtn.onclick = () => db.collection("wuensche").doc(doc.id).update({ status: "angenommen" });
-
-        const declineBtn = document.createElement("button");
-        declineBtn.textContent = "❌ Ablehnen";
-        declineBtn.className = "bg-red-600 px-2 py-1 rounded mt-2 hover:bg-red-700";
-
-        const reasonSelect = createDropdown(["Ablehnungsgrund wählen", ...ablehnGruende], "Ablehnungsgrund wählen", e => {
-          if (e.target.value !== "Ablehnungsgrund wählen") {
-            db.collection("wuensche").doc(doc.id).update({ status: `abgelehnt: ${e.target.value}` });
-          }
-        });
-
-        const deleteBtn = document.createElement("button");
-        deleteBtn.textContent = "🗑️ Löschen";
-        deleteBtn.className = "bg-gray-600 px-2 py-1 rounded ml-2 mt-2 hover:bg-gray-700";
-        deleteBtn.onclick = () => db.collection("wuensche").doc(doc.id).delete();
-
-        div.appendChild(acceptBtn);
-        div.appendChild(declineBtn);
-        div.appendChild(reasonSelect);
-        div.appendChild(deleteBtn);
-
-        newWishesDiv.appendChild(div);
-      } else {
-        const statusSelect = createDropdown(["angenommen", "gespielt", "abgelehnt", "offen"], data.status.split(":")[0], e => {
-          db.collection("wuensche").doc(doc.id).update({ status: e.target.value });
-        });
-
-        const deleteBtn = document.createElement("button");
-        deleteBtn.textContent = "🗑️ Löschen";
-        deleteBtn.className = "bg-gray-600 px-2 py-1 rounded ml-2 hover:bg-gray-700";
-        deleteBtn.onclick = () => db.collection("wuensche").doc(doc.id).delete();
-
-        div.appendChild(statusSelect);
-        div.appendChild(deleteBtn);
-        processedDiv.appendChild(div);
+      if(data.comment){
+        const comment = document.createElement("p");
+        comment.className = "mt-2 italic text-gray-300";
+        comment.textContent = "Kommentar: " + data.comment;
+        div.appendChild(comment);
       }
-    }
 
-    // Laden der Konfiguration für Zufallsdesign
-    function loadDesignConfig() {
-      db.collection("config").doc("designMode").get().then(docSnap => {
-        if (docSnap.exists) {
-          const enabled = docSnap.data().enabled;
-          designToggle.checked = enabled;
-        } else {
-          // Wenn config noch nicht existiert, Standard = false
-          designToggle.checked = false;
+      const status = document.createElement("p");
+      status.className = "mt-2 font-semibold";
+      let statusText = "Status: " + data.status.charAt(0).toUpperCase() + data.status.slice(1);
+      if(data.status === "abgelehnt" && data.rejectReason){
+        statusText += " (Grund: " + data.rejectReason + ")";
+      } else if(data.status === "gespielt"){
+        statusText += " ✅";
+      }
+      status.textContent = statusText;
+      div.appendChild(status);
+
+      // Löschen Button
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Löschen";
+      deleteBtn.className = "mt-2 bg-red-600 px-3 py-1 rounded hover:bg-red-700";
+      deleteBtn.onclick = async () => {
+        if(confirm("Wirklich löschen?")){
+          await db.collection("wuensche").doc(doc.id).delete();
         }
-      });
+      };
+      div.appendChild(deleteBtn);
+
+      wunschListe.appendChild(div);
     }
 
-    // Speichern der Konfiguration bei Umschalten
-    designToggle.addEventListener("change", () => {
-      db.collection("config").doc("designMode").set({ enabled: designToggle.checked });
+    // Zeige Adminbereich oder Login je nach Status
+    function showAppropriateView() {
+      if(isLoggedIn()){
+        loginContainer.classList.add("hidden");
+        adminContent.classList.remove("hidden");
+
+        // Wünsche live laden
+        db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+          wunschListe.innerHTML = "";
+          snapshot.forEach(doc => renderWunsch(doc));
+        });
+
+      } else {
+        loginContainer.classList.remove("hidden");
+        adminContent.classList.add("hidden");
+      }
+    }
+
+    loginForm.addEventListener("submit", e => {
+      e.preventDefault();
+      loginError.textContent = "";
+
+      const pw = document.getElementById("password").value;
+      if(pw === ADMIN_PASSWORD){
+        setLoggedIn(true);
+        showAppropriateView();
+        loginForm.reset();
+      } else {
+        loginError.textContent = "Falsches Passwort!";
+      }
     });
 
-    // Daten aus Firestore holen
-    db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-      newWishesDiv.innerHTML = "";
-      processedDiv.innerHTML = "";
-      snapshot.forEach(doc => renderWish(doc));
+    logoutBtn.addEventListener("click", () => {
+      setLoggedIn(false);
+      showAppropriateView();
     });
 
-    loadDesignConfig();
+    // Beim Laden prüfen
+    showAppropriateView();
   </script>
+
 </body>
 </html>
-
