@@ -8,8 +8,44 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-6">
-  <div class="max-w-6xl mx-auto">
+<body class="bg-gray-900 text-white min-h-screen p-6 flex flex-col items-center justify-center">
+
+  <!-- Login Container -->
+  <div id="loginContainer" class="bg-gray-800 p-8 rounded shadow max-w-md w-full">
+    <h1 class="text-3xl font-bold mb-6 text-center">🔒 Login</h1>
+    <p id="errorMsg" class="mb-4 text-red-500 text-center hidden"></p>
+    <form id="loginForm" class="space-y-4">
+      <label class="block">
+        Benutzername:
+        <input
+          type="text"
+          id="usernameInput"
+          class="w-full mt-1 p-2 rounded bg-gray-700 text-white"
+          autocomplete="username"
+          required
+        />
+      </label>
+      <label class="block">
+        Passwort:
+        <input
+          type="password"
+          id="passwordInput"
+          class="w-full mt-1 p-2 rounded bg-gray-700 text-white"
+          autocomplete="current-password"
+          required
+        />
+      </label>
+      <button
+        type="submit"
+        class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded text-white font-semibold"
+      >
+        Anmelden
+      </button>
+    </form>
+  </div>
+
+  <!-- Admin Content Container (versteckt, bis login erfolgt) -->
+  <div id="adminContainer" class="max-w-6xl mx-auto w-full hidden flex-col">
     <header class="flex justify-between items-center mb-6">
       <h1 class="text-3xl font-bold">🛠 Admin Panel</h1>
       <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Abmelden</button>
@@ -21,16 +57,9 @@
   </div>
 
   <script>
-    // ===== Login-Status prüfen =====
-    const loggedInUserId = localStorage.getItem("loggedInUserId");
-    const loggedInUsername = localStorage.getItem("loggedInUsername");
-
-    if (!loggedInUserId) {
-      // Nicht eingeloggt → zurück zur Login-Seite
-      window.location.href = "login.html";
-    }
-
-    // ===== Firebase konfigurieren =====
+    // ==========================
+    // Firebase konfigurieren
+    // ==========================
     const firebaseConfig = {
       apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
       authDomain: "herder-7dd17.firebaseapp.com",
@@ -44,22 +73,99 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // ==========================
+    // Element-Referenzen
+    // ==========================
+    const loginContainer = document.getElementById("loginContainer");
+    const adminContainer = document.getElementById("adminContainer");
+    const loginForm = document.getElementById("loginForm");
+    const errorMsg = document.getElementById("errorMsg");
+    const usernameInput = document.getElementById("usernameInput");
+    const passwordInput = document.getElementById("passwordInput");
     const logoutBtn = document.getElementById("logoutBtn");
     const content = document.getElementById("content");
 
-    // ===== Logout: localStorage löschen und zurück zur Login-Seite =====
+    // ==========================
+    // Prüfen, ob schon eingeloggt
+    // ==========================
+    function showAdminPanel(username) {
+      loginContainer.classList.add("hidden");
+      adminContainer.classList.remove("hidden");
+      content.innerHTML = `<p>Willkommen, <strong>${username}</strong>!</p><p>Hier kannst du jetzt deine Admin-Daten laden und bearbeiten.</p>`;
+      loadWuensche();
+    }
+
+    function showLogin() {
+      loginContainer.classList.remove("hidden");
+      adminContainer.classList.add("hidden");
+      errorMsg.classList.add("hidden");
+      loginForm.reset();
+    }
+
+    const loggedInUserId = localStorage.getItem("loggedInUserId");
+    const loggedInUsername = localStorage.getItem("loggedInUsername");
+
+    if (loggedInUserId && loggedInUsername) {
+      showAdminPanel(loggedInUsername);
+    } else {
+      showLogin();
+    }
+
+    // ==========================
+    // Login-Formular Event
+    // ==========================
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      errorMsg.classList.add("hidden");
+      errorMsg.textContent = "";
+
+      try {
+        const querySnapshot = await db.collection("users").where("username", "==", username).get();
+
+        if (querySnapshot.empty) {
+          throw new Error("Benutzername nicht gefunden");
+        }
+
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+
+        if (userData.passwort !== password) {
+          throw new Error("Falsches Passwort");
+        }
+
+        // Login erfolgreich: lokal speichern
+        localStorage.setItem("loggedInUserId", userDoc.id);
+        localStorage.setItem("loggedInUsername", username);
+
+        showAdminPanel(username);
+
+      } catch (error) {
+        errorMsg.textContent = error.message;
+        errorMsg.classList.remove("hidden");
+      }
+    });
+
+    // ==========================
+    // Logout Event
+    // ==========================
     logoutBtn.addEventListener("click", () => {
       localStorage.removeItem("loggedInUserId");
       localStorage.removeItem("loggedInUsername");
-      window.location.href = "login.html";
+      showLogin();
     });
 
-    // ===== Begrüßung anzeigen =====
-    content.innerHTML = `<p>Willkommen, ${loggedInUsername}!</p><p>Hier kannst du jetzt deine Admin-Daten laden und bearbeiten.</p>`;
+    // ==========================
+    // Beispiel: Wünsche laden
+    // ==========================
+    async function loadWuensche() {
+      content.innerHTML += "<p>Lade Wünsche...</p>";
 
-    // ===== Wünsche laden und anzeigen =====
-    db.collection("wuensche").get()
-      .then(snapshot => {
+      try {
+        const snapshot = await db.collection("wuensche").get();
         if (snapshot.empty) {
           content.innerHTML += "<p>Keine Wünsche gefunden.</p>";
           return;
@@ -72,10 +178,11 @@
         });
         html += "</ul>";
         content.innerHTML += html;
-      })
-      .catch(error => {
+
+      } catch (error) {
         content.innerHTML += `<p class="text-red-500">Fehler beim Laden der Wünsche: ${error.message}</p>`;
-      });
+      }
+    }
   </script>
 </body>
 </html>
