@@ -2,62 +2,98 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Herdernacht – Songwunsch</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
-      authDomain: "herder-7dd17.firebaseapp.com",
-      projectId: "herder-7dd17",
-      storageBucket: "herder-7dd17.firebasestorage.app",
-      messagingSenderId: "472463332211",
-      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
-      measurementId: "G-HR07N6LXGN"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Herdernacht Songwünsche</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-start p-6">
-  <h1 class="text-3xl font-bold mb-6 text-center">🎵 Herdernacht Songwunsch</h1>
-  <form id="songForm" class="w-full max-w-md space-y-4">
-    <input type="text" id="title" placeholder="Songtitel" required class="w-full p-2 rounded bg-gray-800 border border-gray-700" />
-    <input type="text" id="artist" placeholder="Interpret" required class="w-full p-2 rounded bg-gray-800 border border-gray-700" />
-    <input type="url" id="link" placeholder="YouTube-/Spotify-Link (optional)" class="w-full p-2 rounded bg-gray-800 border border-gray-700" />
-    <textarea id="reason" placeholder="Warum dieser Song? (optional)" class="w-full p-2 rounded bg-gray-800 border border-gray-700"></textarea>
-    <button type="submit" class="w-full p-2 bg-green-600 hover:bg-green-700 rounded">Absenden</button>
+<body id="body" class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-6">
+
+  <h1 class="text-3xl font-bold mb-6">🎶 Songwünsche Herdernacht 2025</h1>
+
+  <form id="wishForm" class="flex flex-col w-full max-w-md space-y-4 bg-gray-800 p-6 rounded shadow">
+    <input
+      type="text"
+      id="title"
+      name="title"
+      placeholder="Songtitel"
+      required
+      class="p-3 rounded text-black"
+    />
+    <input
+      type="text"
+      id="artist"
+      name="artist"
+      placeholder="Interpret / Künstler"
+      required
+      class="p-3 rounded text-black"
+    />
+    <input
+      type="url"
+      id="link"
+      name="link"
+      placeholder="Link (optional)"
+      class="p-3 rounded text-black"
+    />
+    <button
+      type="submit"
+      id="submitBtn"
+      class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded transition-all duration-300"
+    >
+      Wunsch absenden
+    </button>
   </form>
 
-  <a href="status.html" class="mt-4 inline-block text-sm text-blue-400 hover:underline">🔎 Bisherige Wünsche ansehen</a>
-
-  <a href="admin.html" class="fixed bottom-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded shadow hover:bg-yellow-700 text-sm">🔒 Admin Login</a>
+  <button
+    id="showWishesBtn"
+    class="mt-6 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded"
+    onclick="location.href='status.html'"
+  >
+    🎵 Bisherige Wünsche ansehen
+  </button>
 
   <script>
-    document.getElementById("songForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const title = document.getElementById("title").value.trim();
-      const artist = document.getElementById("artist").value.trim();
-      const link = document.getElementById("link").value.trim();
-      const reason = document.getElementById("reason").value.trim();
+    function setRandomDesign() {
+      const rand = Math.floor(Math.random() * 100);
+      const body = document.getElementById("body");
+      const inputs = document.querySelectorAll("#wishForm input");
+      const submitBtn = document.getElementById("submitBtn");
 
-      if (!title || !artist) return alert("Bitte Titel und Interpret eingeben.");
-
-      await db.collection("wuensche").add({
-        title,
-        artist,
-        link,
-        reason,
-        status: "offen",
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      // Reset auf Standard
+      body.className = "bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-6";
+      inputs.forEach(input => {
+        input.style.border = "none";
+        input.style.backgroundColor = "white";
       });
+      submitBtn.style.boxShadow = "none";
+      submitBtn.style.backgroundColor = "";
+      submitBtn.style.color = "white";
 
-      alert("Songwunsch wurde eingereicht!");
-      document.getElementById("songForm").reset();
-    });
+      if (rand < 50) {
+        // 50% Standarddesign - keine Änderung
+        console.log("Standarddesign");
+      } else if (rand < 60) {
+        // 10% Eingabefelder mit bunter Umrandung
+        const colors = ["#f87171", "#60a5fa", "#34d399", "#fbbf24"]; // Rot, Blau, Grün, Gelb
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        inputs.forEach(input => {
+          input.style.border = `3px solid ${color}`;
+        });
+        console.log("Design mit bunter Umrandung");
+      } else if (rand < 75) {
+        // 15% Absende-Button leuchtet
+        submitBtn.style.boxShadow = "0 0 10px 3px #34d399";
+        submitBtn.style.backgroundColor = "#22c55e"; // grün leuchtend
+        submitBtn.style.color = "white";
+        console.log("Design mit leuchtendem Button");
+      } else {
+        // Rest 25% anderer Hintergrund
+        body.className =
+          "bg-gray-700 text-white min-h-screen flex flex-col items-center justify-center p-6";
+        console.log("Anderes Hintergrunddesign");
+      }
+    }
+
+    window.onload = setRandomDesign;
   </script>
 </body>
 </html>
