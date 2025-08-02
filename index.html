@@ -2,99 +2,72 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Herdernacht Songwünsche</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+      authDomain: "herder-7dd17.firebaseapp.com",
+      projectId: "herder-7dd17",
+      storageBucket: "herder-7dd17.firebasestorage.app",
+      messagingSenderId: "472463332211",
+      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+      measurementId: "G-HR07N6LXGN"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
 </head>
-<body id="body" class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-6">
+<body class="bg-gray-900 text-white p-6">
+  <h1 class="text-2xl font-bold mb-4">📋 Aktueller Status der Songwünsche</h1>
+  <button onclick="location.href='index.html'" class="mb-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">🔙 Zurück zur Startseite</button>
 
-  <h1 class="text-3xl font-bold mb-6">🎶 Songwünsche Herdernacht 2025</h1>
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold mb-2">🎶 Gespielte Wünsche</h2>
+    <div id="gespieltWishes" class="space-y-4"></div>
+  </div>
 
-  <form id="wishForm" class="flex flex-col w-full max-w-md space-y-4 bg-gray-800 p-6 rounded shadow">
-    <input
-      type="text"
-      id="title"
-      name="title"
-      placeholder="Songtitel"
-      required
-      class="p-3 rounded text-black"
-    />
-    <input
-      type="text"
-      id="artist"
-      name="artist"
-      placeholder="Interpret / Künstler"
-      required
-      class="p-3 rounded text-black"
-    />
-    <input
-      type="url"
-      id="link"
-      name="link"
-      placeholder="Link (optional)"
-      class="p-3 rounded text-black"
-    />
-    <button
-      type="submit"
-      id="submitBtn"
-      class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded transition-all duration-300"
-    >
-      Wunsch absenden
-    </button>
-  </form>
-
-  <button
-    id="showWishesBtn"
-    class="mt-6 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded"
-    onclick="location.href='status.html'"
-  >
-    🎵 Bisherige Wünsche ansehen
-  </button>
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold mb-2">❌ Abgelehnte Wünsche</h2>
+    <div id="abgelehntWishes" class="space-y-4"></div>
+  </div>
 
   <script>
-    function setRandomDesign() {
-      const rand = Math.floor(Math.random() * 100);
-      const body = document.getElementById("body");
-      const inputs = document.querySelectorAll("#wishForm input");
-      const submitBtn = document.getElementById("submitBtn");
+    const gespieltDiv = document.getElementById("gespieltWishes");
+    const abgelehntDiv = document.getElementById("abgelehntWishes");
 
-      // Reset auf Standard
-      body.className = "bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-6";
-      inputs.forEach(input => {
-        input.style.border = "none";
-        input.style.backgroundColor = "white";
-      });
-      submitBtn.style.boxShadow = "none";
-      submitBtn.style.backgroundColor = "";
-      submitBtn.style.color = "white";
-
-      if (rand < 50) {
-        // 50% Standarddesign - keine Änderung
-        console.log("Standarddesign");
-      } else if (rand < 60) {
-        // 10% Eingabefelder mit bunter Umrandung
-        const colors = ["#f87171", "#60a5fa", "#34d399", "#fbbf24"]; // Rot, Blau, Grün, Gelb
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        inputs.forEach(input => {
-          input.style.border = `3px solid ${color}`;
-        });
-        console.log("Design mit bunter Umrandung");
-      } else if (rand < 75) {
-        // 15% Absende-Button leuchtet
-        submitBtn.style.boxShadow = "0 0 10px 3px #34d399";
-        submitBtn.style.backgroundColor = "#22c55e"; // grün leuchtend
-        submitBtn.style.color = "white";
-        console.log("Design mit leuchtendem Button");
-      } else {
-        // Rest 25% anderer Hintergrund
-        body.className =
-          "bg-gray-700 text-white min-h-screen flex flex-col items-center justify-center p-6";
-        console.log("Anderes Hintergrunddesign");
-      }
+    function renderWish(data) {
+      const div = document.createElement("div");
+      div.className = "bg-gray-800 p-4 rounded shadow";
+      div.innerHTML = `
+        <p><strong>${data.title}</strong> – ${data.artist}</p>
+        ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
+      `;
+      return div;
     }
 
-    window.onload = setRandomDesign;
+    db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+      gespieltDiv.innerHTML = "";
+      abgelehntDiv.innerHTML = "";
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.status === "gespielt") {
+          gespieltDiv.appendChild(renderWish(data));
+        } else if (data.status.startsWith("abgelehnt")) {
+          const div = document.createElement("div");
+          div.className = "bg-gray-800 p-4 rounded shadow";
+          div.innerHTML = `
+            <p><strong>${data.title}</strong> – ${data.artist}</p>
+            ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
+            <p class="text-sm italic mt-1">Grund: ${data.status.split(":"[1])}</p>
+          `;
+          abgelehntDiv.appendChild(div);
+        }
+      });
+    });
   </script>
 </body>
 </html>
-
