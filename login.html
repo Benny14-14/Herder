@@ -5,38 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login – Herdernacht</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-6">
 
-  <div class="w-full max-w-md bg-gray-800 p-8 rounded shadow-lg">
-    <h1 class="text-3xl font-bold mb-6 text-center">🔐 Anmeldung</h1>
+  <!-- Login Container -->
+  <div class="bg-gray-800 p-8 rounded shadow max-w-md w-full">
 
+    <h1 class="text-3xl font-bold mb-6 text-center">🔒 Login</h1>
+
+    <!-- Fehlermeldung -->
+    <p id="errorMsg" class="mb-4 text-red-500 text-center hidden"></p>
+
+    <!-- Login-Form -->
     <form id="loginForm" class="space-y-4">
-      <div>
-        <label for="username" class="block mb-1">Benutzername</label>
-        <input id="username" type="text" required
-          class="w-full p-2 rounded text-black" placeholder="Benutzername eingeben" />
-      </div>
 
-      <div>
-        <label for="password" class="block mb-1">Passwort</label>
-        <input id="password" type="password" required
-          class="w-full p-2 rounded text-black" placeholder="Passwort eingeben" />
-      </div>
+      <!-- Username Eingabe -->
+      <label class="block">
+        Benutzername:
+        <input
+          type="text"
+          id="usernameInput"
+          class="w-full mt-1 p-2 rounded bg-gray-700 text-white"
+          autocomplete="username"
+          required
+        />
+      </label>
 
-      <p id="errorMsg" class="text-red-500 text-sm hidden"></p>
+      <!-- Passwort Eingabe -->
+      <label class="block">
+        Passwort:
+        <input
+          type="password"
+          id="passwordInput"
+          class="w-full mt-1 p-2 rounded bg-gray-700 text-white"
+          autocomplete="current-password"
+          required
+        />
+      </label>
 
-      <button type="submit"
-        class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-semibold text-white">
+      <!-- Login Button -->
+      <button
+        type="submit"
+        class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded text-white font-semibold"
+      >
         Anmelden
       </button>
     </form>
+
   </div>
 
+  <!-- Firebase + Login Logik -->
   <script>
-    // Firebase Konfiguration
+    // ==========================
+    // Firebase konfigurieren
+    // ==========================
     const firebaseConfig = {
       apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
       authDomain: "herder-7dd17.firebaseapp.com",
@@ -46,41 +72,63 @@
       appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
       measurementId: "G-HR07N6LXGN"
     };
-    firebase.initializeApp(firebaseConfig);
 
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // ==========================
+    // Element-Referenzen
+    // ==========================
     const loginForm = document.getElementById("loginForm");
     const errorMsg = document.getElementById("errorMsg");
+    const usernameInput = document.getElementById("usernameInput");
+    const passwordInput = document.getElementById("passwordInput");
 
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    // ==========================
+    // Login Event-Handler
+    // ==========================
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      // Eingabewerte holen
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      // Fehleranzeige verstecken
       errorMsg.classList.add("hidden");
       errorMsg.textContent = "";
 
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value;
-
       try {
-        const userDoc = await db.collection("users").doc(username).get();
+        // Firestore-Abfrage: Suche Nutzer mit dem eingegebenen Username
+        const querySnapshot = await db.collection("users").where("username", "==", username).get();
 
-        if (!userDoc.exists) {
+        if (querySnapshot.empty) {
+          // Nutzer nicht gefunden
           throw new Error("Benutzername nicht gefunden");
         }
 
+        // Nutzer-Dokument (das erste Treffer-Dokument)
+        const userDoc = querySnapshot.docs[0];
         const userData = userDoc.data();
 
+        // Passwort prüfen
         if (userData.passwort !== password) {
           throw new Error("Falsches Passwort");
         }
 
-        // Login erfolgreich → Session speichern
-        sessionStorage.setItem("loggedInUser", username);
+        // Login erfolgreich, Nutzer-ID (Firestore-Dokument-ID)
+        const userId = userDoc.id;
 
-        // Weiterleitung zur Admin-Seite
+        // Hier z.B. Session speichern (localStorage oder sessionStorage)
+        // Wir speichern einfach die User-ID als loggedInUser
+        sessionStorage.setItem("loggedInUserId", userId);
+        sessionStorage.setItem("loggedInUsername", username);
+
+        // Weiterleitung zum Admin-Panel
         window.location.href = "admin.html";
 
       } catch (error) {
+        // Fehlermeldung anzeigen
         errorMsg.textContent = error.message;
         errorMsg.classList.remove("hidden");
       }
