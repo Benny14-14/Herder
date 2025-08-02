@@ -119,10 +119,10 @@
         // Login erfolgreich, Nutzer-ID (Firestore-Dokument-ID)
         const userId = userDoc.id;
 
-        // Hier z.B. Session speichern (localStorage oder sessionStorage)
+        // Hier z.B. local speichern (localStorage oder localStorage)
         // Wir speichern einfach die User-ID als loggedInUser
-        sessionStorage.setItem("loggedInUserId", userId);
-        sessionStorage.setItem("loggedInUsername", username);
+        localStorage.setItem("loggedInUserId", userId);
+        localStorage.setItem("loggedInUsername", username);
 
         // Weiterleitung zum Admin-Panel
         window.location.href = "admin.html";
