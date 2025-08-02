@@ -7,19 +7,6 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
-      authDomain: "herder-7dd17.firebaseapp.com",
-      projectId: "herder-7dd17",
-      storageBucket: "herder-7dd17.firebasestorage.app",
-      messagingSenderId: "472463332211",
-      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
-      measurementId: "G-HR07N6LXGN"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-  </script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen p-6">
 
@@ -31,6 +18,14 @@
       <h2 class="text-xl font-semibold mb-4">🔐 Login</h2>
       <form id="loginForm" class="space-y-4">
         <input
+          type="text"
+          id="usernameInput"
+          placeholder="Benutzername"
+          required
+          class="w-full p-2 rounded text-black"
+          autocomplete="username"
+        />
+        <input
           type="password"
           id="passwordInput"
           placeholder="Passwort"
@@ -40,7 +35,7 @@
         />
         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded">Login</button>
       </form>
-      <p id="loginError" class="mt-2 text-red-500 hidden">Falsches Passwort.</p>
+      <p id="loginError" class="mt-2 text-red-500 hidden">Ungültiger Benutzername oder Passwort.</p>
     </div>
 
     <!-- Admin-Content -->
@@ -48,6 +43,7 @@
 
       <div class="mb-6 flex justify-between items-center">
         <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Logout</button>
+        <a href="konto.html" class="text-blue-400 hover:underline">👤 Konten verwalten</a>
       </div>
 
       <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
@@ -59,52 +55,89 @@
   </div>
 
   <script>
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+      authDomain: "herder-7dd17.firebaseapp.com",
+      projectId: "herder-7dd17",
+      storageBucket: "herder-7dd17.firebasestorage.app",
+      messagingSenderId: "472463332211",
+      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+      measurementId: "G-HR07N6LXGN"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const loginArea = document.getElementById("loginArea");
     const adminContent = document.getElementById("adminContent");
     const loginForm = document.getElementById("loginForm");
+    const usernameInput = document.getElementById("usernameInput");
     const passwordInput = document.getElementById("passwordInput");
     const loginError = document.getElementById("loginError");
     const logoutBtn = document.getElementById("logoutBtn");
 
-    const ADMIN_PASSWORD = "deinSicheresPasswort123";  // <-- Hier dein Passwort eintragen
+    let currentUser = null;
 
-    function showError(msg) {
-      loginError.textContent = msg;
-      loginError.classList.remove("hidden");
+    // Login Funktion: Prüfe Username und Passwort gegen Firestore
+    async function login(username, password) {
+      try {
+        const querySnapshot = await db.collection("users")
+          .where("username", "==", username)
+          .limit(1)
+          .get();
+
+        if (querySnapshot.empty) return false;
+
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+
+        // Achtung: Hier Passwort im Klartext geprüft, 
+        // für Produktion besser gehasht abspeichern und prüfen!
+        if (userData.password === password) {
+          currentUser = username;
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error("Login Fehler:", error);
+        return false;
+      }
+    }
+
+    // Logout Funktion
+    function logout() {
+      currentUser = null;
+      adminContent.classList.add("hidden");
+      loginArea.classList.remove("hidden");
+      loginForm.reset();
+      loginError.classList.add("hidden");
     }
 
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       loginError.classList.add("hidden");
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
 
-      const pw = passwordInput.value.trim();
-      if(pw === ADMIN_PASSWORD) {
+      const success = await login(username, password);
+      if (success) {
         loginArea.classList.add("hidden");
         adminContent.classList.remove("hidden");
         loadWishes();
       } else {
-        showError("Falsches Passwort.");
+        loginError.classList.remove("hidden");
       }
-      loginForm.reset();
     });
 
-    logoutBtn.onclick = () => {
-      adminContent.classList.add("hidden");
-      loginArea.classList.remove("hidden");
-    };
+    logoutBtn.onclick = logout;
 
+    // Lade Songwünsche aus Firestore und zeige sie an
     async function loadWishes() {
       const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
       const pendingList = document.getElementById("pendingList");
       const processedList = document.getElementById("processedList");
       pendingList.innerHTML = "";
       processedList.innerHTML = "";
-
-      if(snapshot.empty) {
-        pendingList.innerHTML = "<p class='text-center text-gray-400'>Keine Wünsche vorhanden.</p>";
-        processedList.innerHTML = "<p class='text-center text-gray-400'>Keine Wünsche vorhanden.</p>";
-        return;
-      }
 
       snapshot.forEach(doc => {
         const data = doc.data();
@@ -121,10 +154,10 @@
         }
 
         container.innerHTML = `
-          <p><strong>${escapeHtml(data.title || "Unbekannter Titel")}</strong> von ${escapeHtml(data.artist || "Unbekannter Künstler")}</p>
-          ${data.link ? `<p>🔗 <a href="${escapeHtml(data.link)}" target="_blank" class="text-blue-400 underline">Link</a></p>` : ""}
-          ${data.comment ? `<p>💬 ${escapeHtml(data.comment)}</p>` : ""}
-          <p>👍 ${data.upvotes || 0} / 👎 ${data.downvotes || 0}</p>
+          <p><strong>${data.title}</strong> von ${data.artist}</p>
+          ${data.link ? `<p>🔗 <a href="${data.link}" target="_blank" class="text-blue-400 underline">Link</a></p>` : ""}
+          ${data.comment ? `<p>💬 ${data.comment}</p>` : ""}
+          <p>👍 ${data.upvotes ?? 0} / 👎 ${data.downvotes ?? 0}</p>
           <p>${statusText}</p>
         `;
 
@@ -152,56 +185,4 @@
           saveBtn.className = "ml-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded hidden";
 
           declineBtn.onclick = () => {
-            reasonSelect.classList.remove("hidden");
-            saveBtn.classList.remove("hidden");
-          };
-
-          saveBtn.onclick = async () => {
-            const selectedReason = reasonSelect.value;
-            await db.collection("wuensche").doc(doc.id).update({ status: "abgelehnt", reason: selectedReason });
-            loadWishes();
-          };
-
-          container.appendChild(acceptBtn);
-          container.appendChild(declineBtn);
-          container.appendChild(reasonSelect);
-          container.appendChild(saveBtn);
-          pendingList.appendChild(container);
-        } else {
-          const moveBackBtn = document.createElement("button");
-          moveBackBtn.textContent = "🔁 Zurückstellen";
-          moveBackBtn.className = "mt-2 mr-2 bg-yellow-600 hover:bg-yellow-700 px-2 py-1 rounded";
-          moveBackBtn.onclick = async () => {
-            await db.collection("wuensche").doc(doc.id).update({ status: "offen" });
-            loadWishes();
-          };
-
-          const deleteBtn = document.createElement("button");
-          deleteBtn.textContent = "🗑️ Löschen";
-          deleteBtn.className = "mt-2 bg-red-600 hover:bg-red-700 px-2 py-1 rounded";
-          deleteBtn.onclick = async () => {
-            await db.collection("wuensche").doc(doc.id).delete();
-            loadWishes();
-          };
-
-          container.appendChild(moveBackBtn);
-          container.appendChild(deleteBtn);
-          processedList.appendChild(container);
-        }
-      });
-    }
-
-    // Helfer: HTML escapen
-    function escapeHtml(text) {
-      if (!text) return "";
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-  </script>
-
-</body>
-</html>
+            reasonSelect
