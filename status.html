@@ -67,8 +67,9 @@
 
       let statusText = "Status: " + data.status.charAt(0).toUpperCase() + data.status.slice(1);
 
-      if(data.status === "abgelehnt" && data.rejectReason){
-        statusText += " (Grund: " + data.rejectReason + ")";
+      if(data.status === "abgelehnt" && data.reason){
+        statusText = "Status: Abgelehnt: " + data.reason;
+        status.className += " text-red-400";
       } else if(data.status === "gespielt"){
         statusText += " ✅";
       }
