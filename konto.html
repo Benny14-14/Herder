@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kontenverwaltung – Herdernacht</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+      authDomain: "herder-7dd17.firebaseapp.com",
+      projectId: "herder-7dd17",
+      storageBucket: "herder-7dd17.firebasestorage.app",
+      messagingSenderId: "472463332211",
+      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+      measurementId: "G-HR07N6LXGN"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function loadUsers() {
+      const tableBody = document.getElementById("usersTableBody");
+      tableBody.innerHTML = "";
+
+      const snapshot = await db.collection("users").orderBy("username").get();
+      snapshot.forEach(doc => {
+        const user = doc.data();
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-gray-700";
+
+        // Online Status (grün/rot)
+        const onlineStatus = user.online ? 
+          `<span class="text-green-400 font-bold">Ja</span>` : 
+          `<span class="text-red-400 font-bold">Nein</span>`;
+
+        tr.innerHTML = `
+          <td class="px-4 py-2">
+            <input type="text" class="bg-gray-800 text-white p-1 rounded w-full" value="${user.username ?? ''}" 
+              onchange="updateUser('${doc.id}', 'username', this.value)" />
+          </td>
+          <td class="px-4 py-2">
+            <input type="text" class="bg-gray-800 text-white p-1 rounded w-full" value="${user.password ?? ''}" 
+              onchange="updateUser('${doc.id}', 'password', this.value)" />
+          </td>
+          <td class="px-4 py-2">${user.lastLogin ? new Date(user.lastLogin.seconds * 1000).toLocaleString() : '-'}</td>
+          <td class="px-4 py-2">${user.lastChange ? new Date(user.lastChange.seconds * 1000).toLocaleString() : '-'}</td>
+          <td class="px-4 py-2 text-center">${onlineStatus}</td>
+          <td class="px-4 py-2 text-center">
+            <button onclick="deleteUser('${doc.id}')" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded">🗑️</button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    async function updateUser(id, field, value) {
+      const updateData = { [field]: value, lastChange: firebase.firestore.FieldValue.serverTimestamp() };
+      await db.collection("users").doc(id).update(updateData);
+      loadUsers();
+    }
+
+    async function deleteUser(id) {
+      if(confirm("Diesen Nutzer wirklich löschen?")) {
+        await db.collection("users").doc(id).delete();
+        loadUsers();
+      }
+    }
+
+    function showAddUser() {
+      document.getElementById("addUserRow").classList.remove("hidden");
+      document.getElementById("addUsername").focus();
+    }
+
+    async function addUser() {
+      const username = document.getElementById("addUsername").value.trim();
+      const password = document.getElementById("addPassword").value;
+
+      if (!username || !password) {
+        alert("Bitte Benutzername und Passwort eingeben.");
+        return;
+      }
+
+      // Prüfen ob Benutzername schon existiert
+      const snapshot = await db.collection("users").where("username", "==", username).get();
+      if (!snapshot.empty) {
+        alert("Benutzername existiert bereits.");
+        return;
+      }
+
+      await db.collection("users").add({
+        username,
+        password,
+        lastLogin: null,
+        lastChange: firebase.firestore.FieldValue.serverTimestamp(),
+        online: false
+      });
+
+      document.getElementById("addUsername").value = "";
+      document.getElementById("addPassword").value = "";
+      document.getElementById("addUserRow").classList.add("hidden");
+
+      loadUsers();
+    }
+
+    async function init() {
+      await loadUsers();
+    }
+
+    window.onload = init;
+  </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">👥 Kontenverwaltung – Herdernacht</h1>
+    <div class="mb-4 flex justify-between items-center">
+      <button onclick="showAddUser()" class="bg-green-600 px-5 py-2 rounded hover:bg-green-700 font-semibold">+ Neuer Account</button>
+      <a href="admin.html" class="text-blue-400 hover:underline">⬅ Zurück zum Adminbereich</a>
+    </div>
+
+    <table class="w-full text-left border border-gray-700 rounded">
+      <thead>
+        <tr class="bg-gray-800 border-b border-gray-700">
+          <th class="px-4 py-2">Benutzername</th>
+          <th class="px-4 py-2">Passwort</th>
+          <th class="px-4 py-2">Letzter Login</th>
+          <th class="px-4 py-2">Letzte Änderung</th>
+          <th class="px-4 py-2 text-center">Online</th>
+          <th class="px-4 py-2 text-center">Aktion</th>
+        </tr>
+      </thead>
+      <tbody id="usersTableBody"></tbody>
+
+      <!-- Zeile zum Hinzufügen neuer User -->
+      <tbody id="addUserRow" class="hidden bg-gray-800 border-t border-gray-700">
+        <tr>
+          <td class="px-4 py-2">
+            <input id="addUsername" type="text" class="bg-gray-700 text-white p-1 rounded w-full" placeholder="Benutzername" />
+          </td>
+          <td class="px-4 py-2">
+            <input id="addPassword" type="text" class="bg-gray-700 text-white p-1 rounded w-full" placeholder="Passwort" />
+          </td>
+          <td class="px-4 py-2">-</td>
+          <td class="px-4 py-2">-</td>
+          <td class="px-4 py-2 text-center">-</td>
+          <td class="px-4 py-2 text-center">
+            <button onclick="addUser()" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded">✔️</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
