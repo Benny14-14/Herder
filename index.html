@@ -21,19 +21,20 @@
     const db = firebase.firestore();
   </script>
 </head>
-<body class="bg-gray-900 text-white p-6">
-  <h1 class="text-2xl font-bold mb-4">🎵 Wunsch einreichen</h1>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-4 text-center">🎵 Wunsch einreichen</h1>
 
-  <form id="wishForm" class="space-y-4">
-    <input type="text" id="title" placeholder="Songtitel" required class="w-full p-2 rounded text-black" />
-    <input type="text" id="artist" placeholder="Interpret" required class="w-full p-2 rounded text-black" />
-    <input type="url" id="link" placeholder="YouTube/Spotify-Link (optional)" class="w-full p-2 rounded text-black" />
-    <textarea id="comment" placeholder="Kommentar (optional)" class="w-full p-2 rounded text-black"></textarea>
-    <button type="submit" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">✅ Wunsch absenden</button>
-  </form>
+    <form id="wishForm" class="space-y-4">
+      <input type="text" id="title" placeholder="Songtitel" required class="w-full p-2 rounded text-black" />
+      <input type="text" id="artist" placeholder="Interpret" required class="w-full p-2 rounded text-black" />
+      <input type="url" id="link" placeholder="YouTube/Spotify-Link (optional)" class="w-full p-2 rounded text-black" />
+      <textarea id="comment" placeholder="Kommentar (optional)" class="w-full p-2 rounded text-black"></textarea>
+      <button type="submit" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full">✅ Wunsch absenden</button>
+    </form>
 
-  <button onclick="location.href='status.html'" class="mt-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">📄 Bisherige Wünsche anzeigen</button>
-  <button onclick="location.href='admin.html'" class="fixed bottom-4 right-4 bg-yellow-600 px-4 py-2 rounded-full hover:bg-yellow-700">🔐 Admin Login</button>
+    <button onclick="location.href='status.html'" class="mt-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 w-full">📄 Bisherige Wünsche anzeigen</button>
+  </div>
 
   <script>
     const form = document.getElementById("wishForm");
@@ -61,3 +62,4 @@
   </script>
 </body>
 </html>
+
