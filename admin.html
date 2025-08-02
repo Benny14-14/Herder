@@ -3,11 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Adminbereich – Herdernacht</title>
+  <title>Admin Panel – Herdernacht</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
+    <header class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold">🛠 Admin Panel</h1>
+      <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Abmelden</button>
+    </header>
+
+    <section id="content">
+      <p>Lade Daten...</p>
+    </section>
+  </div>
+
   <script>
+    // Firebase Config einfügen
     const firebaseConfig = {
       apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
       authDomain: "herder-7dd17.firebaseapp.com",
@@ -17,213 +32,46 @@
       appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
       measurementId: "G-HR07N6LXGN"
     };
+
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.firestore();
-  </script>
-</head>
-<body class="bg-gray-900 text-white min-h-screen p-6">
 
-  <div class="max-w-7xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6 text-center">🎧 Adminbereich – Songwünsche verwalten</h1>
-
-    <!-- Login-Bereich -->
-    <div id="loginArea" class="max-w-md mx-auto bg-gray-800 p-6 rounded shadow">
-      <h2 class="text-xl font-semibold mb-4">🔐 Login</h2>
-      <form id="loginForm" class="space-y-4">
-        <input
-          type="text"
-          id="usernameInput"
-          placeholder="Benutzername"
-          required
-          class="w-full p-2 rounded text-black"
-          autocomplete="username"
-        />
-        <input
-          type="password"
-          id="passwordInput"
-          placeholder="Passwort"
-          required
-          class="w-full p-2 rounded text-black"
-          autocomplete="current-password"
-        />
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded">Login</button>
-      </form>
-      <p id="loginError" class="mt-2 text-red-500 hidden">Ungültiger Benutzername oder Passwort.</p>
-    </div>
-
-    <!-- Admin-Content -->
-    <div id="adminContent" class="hidden">
-
-      <div class="mb-6 flex justify-between items-center">
-        <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Logout</button>
-        <a href="konto.html" class="text-blue-400 hover:underline">👤 Konten verwalten</a>
-      </div>
-
-      <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
-      <div id="pendingList" class="space-y-4"></div>
-
-      <h2 class="text-xl font-semibold mt-10 mb-4">✅ Bearbeitete Wünsche</h2>
-      <div id="processedList" class="space-y-4"></div>
-    </div>
-  </div>
-
-  <script>
-    const loginArea = document.getElementById("loginArea");
-    const adminContent = document.getElementById("adminContent");
-    const loginForm = document.getElementById("loginForm");
-    const usernameInput = document.getElementById("usernameInput");
-    const passwordInput = document.getElementById("passwordInput");
-    const loginError = document.getElementById("loginError");
     const logoutBtn = document.getElementById("logoutBtn");
+    const content = document.getElementById("content");
 
-    let currentUser = null;
-
-    // Funktion zum Login: sucht User per Feld 'username' und prüft Passwort
-    async function login(username, password) {
-      const querySnapshot = await db.collection("users")
-        .where("username", "==", username)
-        .limit(1)
-        .get();
-
-      if (querySnapshot.empty) return false;
-
-      const userDoc = querySnapshot.docs[0];
-      const data = userDoc.data();
-
-      if (data.passwort === password) {
-        currentUser = userDoc.id;
-
-        // LastLogin und online Status updaten
-        await db.collection("users").doc(userDoc.id).update({
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-          online: true
-        });
-        return true;
-      }
-      return false;
-    }
-
-    // Logout Funktion
-    async function logout() {
-      if (currentUser) {
-        await db.collection("users").doc(currentUser).update({ online: false });
-        currentUser = null;
-      }
-      adminContent.classList.add("hidden");
-      loginArea.classList.remove("hidden");
-      loginForm.reset();
-    }
-
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      loginError.classList.add("hidden");
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value.trim();
-      const success = await login(username, password);
-      if (success) {
-        loginArea.classList.add("hidden");
-        adminContent.classList.remove("hidden");
-        loadWishes();
-      } else {
-        loginError.classList.remove("hidden");
-      }
+    logoutBtn.addEventListener("click", () => {
+      auth.signOut().then(() => {
+        window.location.href = "login.html";
+      });
     });
 
-    logoutBtn.onclick = logout;
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
 
-    // Lade Songwünsche (unverändert)
-    async function loadWishes() {
-      const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
-      const pendingList = document.getElementById("pendingList");
-      const processedList = document.getElementById("processedList");
-      pendingList.innerHTML = "";
-      processedList.innerHTML = "";
+      content.innerHTML = `<p>Willkommen, ${user.email}!</p><p>Hier kannst du jetzt deine Admin-Daten laden und bearbeiten.</p>`;
 
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const container = document.createElement("div");
-        container.className = "bg-gray-800 p-4 rounded shadow";
-
-        let statusText = "";
-        if (data.status === "abgelehnt" && data.reason) {
-          statusText = `<span class='text-red-400 font-semibold'>Status: Abgelehnt: ${data.reason}</span>`;
-        } else if (data.status === "angenommen") {
-          statusText = `<span class='text-green-400 font-semibold'>Status: Angenommen</span>`;
-        } else if (data.status === "offen") {
-          statusText = `<span class='text-yellow-400 font-semibold'>Status: Offen</span>`;
+      // Beispiel: Wünsche laden
+      db.collection("wuensche").get().then(snapshot => {
+        if (snapshot.empty) {
+          content.innerHTML += "<p>Keine Wünsche gefunden.</p>";
+          return;
         }
 
-        container.innerHTML = `
-          <p><strong>${data.title}</strong> von ${data.artist}</p>
-          ${data.link ? `<p>🔗 <a href="${data.link}" target="_blank" class="text-blue-400 underline">Link</a></p>` : ""}
-          ${data.comment ? `<p>💬 ${data.comment}</p>` : ""}
-          <p>👍 ${data.upvotes} / 👎 ${data.downvotes}</p>
-          <p>${statusText}</p>
-        `;
-
-        if (data.status === "offen") {
-          const acceptBtn = document.createElement("button");
-          acceptBtn.textContent = "✅ Annehmen";
-          acceptBtn.className = "mt-2 mr-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded";
-          acceptBtn.onclick = async () => {
-            await db.collection("wuensche").doc(doc.id).update({ status: "angenommen", reason: firebase.firestore.FieldValue.delete() });
-            loadWishes();
-          };
-
-          const declineBtn = document.createElement("button");
-          declineBtn.textContent = "❌ Ablehnen";
-          declineBtn.className = "mt-2 mr-2 bg-red-600 hover:bg-red-700 px-2 py-1 rounded";
-
-          const reasonSelect = document.createElement("select");
-          reasonSelect.className = "mt-2 p-1 text-black rounded hidden border border-gray-300";
-          ["Unangemessen", "Passt nicht zur Playlist", "Zu laut", "Zuviel Bass"].forEach(reason => {
-            reasonSelect.add(new Option(reason, reason));
-          });
-
-          const saveBtn = document.createElement("button");
-          saveBtn.textContent = "Speichern";
-          saveBtn.className = "ml-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded hidden";
-
-          declineBtn.onclick = () => {
-            reasonSelect.classList.remove("hidden");
-            saveBtn.classList.remove("hidden");
-          };
-
-          saveBtn.onclick = async () => {
-            const selectedReason = reasonSelect.value;
-            await db.collection("wuensche").doc(doc.id).update({ status: "abgelehnt", reason: selectedReason });
-            loadWishes();
-          };
-
-          container.appendChild(acceptBtn);
-          container.appendChild(declineBtn);
-          container.appendChild(reasonSelect);
-          container.appendChild(saveBtn);
-          pendingList.appendChild(container);
-        } else {
-          const moveBackBtn = document.createElement("button");
-          moveBackBtn.textContent = "🔁 Zurückstellen";
-          moveBackBtn.className = "mt-2 mr-2 bg-yellow-600 hover:bg-yellow-700 px-2 py-1 rounded";
-          moveBackBtn.onclick = async () => {
-            await db.collection("wuensche").doc(doc.id).update({ status: "offen" });
-            loadWishes();
-          };
-
-          const deleteBtn = document.createElement("button");
-          deleteBtn.textContent = "🗑️ Löschen";
-          deleteBtn.className = "mt-2 bg-red-600 hover:bg-red-700 px-2 py-1 rounded";
-          deleteBtn.onclick = async () => {
-            await db.collection("wuensche").doc(doc.id).delete();
-            loadWishes();
-          };
-
-          container.appendChild(moveBackBtn);
-          container.appendChild(deleteBtn);
-          processedList.appendChild(container);
-        }
+        let html = `<h2 class="text-xl font-bold mt-6 mb-2">Songwünsche</h2><ul class="list-disc ml-6">`;
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          html += `<li><strong>${data.song || "Unbekannter Song"}</strong> von ${data.user || "Unbekannter User"}</li>`;
+        });
+        html += "</ul>";
+        content.innerHTML += html;
+      }).catch(error => {
+        content.innerHTML += `<p class="text-red-500">Fehler beim Laden der Wünsche: ${error.message}</p>`;
       });
-    }
+    });
   </script>
-
 </body>
 </html>
