@@ -23,6 +23,13 @@
 </head>
 <body class="bg-gray-900 text-white p-6">
   <h1 class="text-2xl font-bold mb-4">🔒 Adminbereich – Songwünsche verwalten</h1>
+
+  <!-- Toggle für Zufallsdesign -->
+  <div class="mb-6 flex items-center space-x-4">
+    <label for="designToggle" class="text-lg">🎨 Zufallsdesign auf Startseite aktivieren:</label>
+    <input type="checkbox" id="designToggle" class="h-6 w-12 rounded cursor-pointer" />
+  </div>
+
   <button onclick="location.href='index.html'" class="mb-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">🔙 Zurück zur Startseite</button>
 
   <div class="mb-8">
@@ -38,11 +45,13 @@
   <script>
     const newWishesDiv = document.getElementById("newWishes");
     const processedDiv = document.getElementById("processedWishes");
+    const designToggle = document.getElementById("designToggle");
 
     const ablehnGruende = [
       "Unangemessen", "Passt nicht zur Playlist", "Zu laut", "Zu viel Bass", "Technisch problematisch"
     ];
 
+    // Funktion für Dropdowns
     function createDropdown(options, selected, onchange) {
       const select = document.createElement("select");
       select.className = "bg-gray-800 p-1 text-white rounded border border-gray-600 ml-2";
@@ -57,13 +66,13 @@
       return select;
     }
 
+    // Wünsche rendern
     function renderWish(doc) {
       const data = doc.data();
       const div = document.createElement("div");
       div.className = "bg-gray-800 p-4 rounded shadow";
       let statusText = data.status;
 
-      // Wenn abgelehnt mit Grund, nur den Grund anzeigen
       if (data.status && data.status.startsWith("abgelehnt:")) {
         statusText = "Abgelehnt: " + data.status.split(":")[1].trim();
       }
@@ -103,7 +112,6 @@
 
         newWishesDiv.appendChild(div);
       } else {
-        // Für bearbeitete Wünsche auch Löschbutton anbieten
         const statusSelect = createDropdown(["angenommen", "gespielt", "abgelehnt", "offen"], data.status.split(":")[0], e => {
           db.collection("wuensche").doc(doc.id).update({ status: e.target.value });
         });
@@ -119,11 +127,33 @@
       }
     }
 
+    // Laden der Konfiguration für Zufallsdesign
+    function loadDesignConfig() {
+      db.collection("config").doc("designMode").get().then(docSnap => {
+        if (docSnap.exists) {
+          const enabled = docSnap.data().enabled;
+          designToggle.checked = enabled;
+        } else {
+          // Wenn config noch nicht existiert, Standard = false
+          designToggle.checked = false;
+        }
+      });
+    }
+
+    // Speichern der Konfiguration bei Umschalten
+    designToggle.addEventListener("change", () => {
+      db.collection("config").doc("designMode").set({ enabled: designToggle.checked });
+    });
+
+    // Daten aus Firestore holen
     db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
       newWishesDiv.innerHTML = "";
       processedDiv.innerHTML = "";
       snapshot.forEach(doc => renderWish(doc));
     });
+
+    loadDesignConfig();
   </script>
 </body>
 </html>
+
