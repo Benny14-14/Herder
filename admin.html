@@ -78,15 +78,23 @@
 
     let currentUser = null;
 
-    // Funktion zum Login: prüft User in DB
+    // Funktion zum Login: sucht User per Feld 'username' und prüft Passwort
     async function login(username, password) {
-      const userDoc = await db.collection("users").doc(username).get();
-      if (!userDoc.exists) return false;
+      const querySnapshot = await db.collection("users")
+        .where("username", "==", username)
+        .limit(1)
+        .get();
+
+      if (querySnapshot.empty) return false;
+
+      const userDoc = querySnapshot.docs[0];
       const data = userDoc.data();
-      if (data.password === password) {
-        currentUser = username;
-        // LastLogin updaten
-        await db.collection("users").doc(username).update({
+
+      if (data.passwort === password) {
+        currentUser = userDoc.id;
+
+        // LastLogin und online Status updaten
+        await db.collection("users").doc(userDoc.id).update({
           lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
           online: true
         });
@@ -123,7 +131,7 @@
 
     logoutBtn.onclick = logout;
 
-    // Lade Songwünsche (wie gehabt)
+    // Lade Songwünsche (unverändert)
     async function loadWishes() {
       const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
       const pendingList = document.getElementById("pendingList");
