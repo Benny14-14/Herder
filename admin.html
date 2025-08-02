@@ -31,14 +31,6 @@
       <h2 class="text-xl font-semibold mb-4">🔐 Login</h2>
       <form id="loginForm" class="space-y-4">
         <input
-          type="text"
-          id="usernameInput"
-          placeholder="Benutzername"
-          required
-          class="w-full p-2 rounded text-black"
-          autocomplete="username"
-        />
-        <input
           type="password"
           id="passwordInput"
           placeholder="Passwort"
@@ -48,7 +40,7 @@
         />
         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded">Login</button>
       </form>
-      <p id="loginError" class="mt-2 text-red-500 hidden">Ungültiger Benutzername oder Passwort.</p>
+      <p id="loginError" class="mt-2 text-red-500 hidden">Falsches Passwort.</p>
     </div>
 
     <!-- Admin-Content -->
@@ -56,7 +48,6 @@
 
       <div class="mb-6 flex justify-between items-center">
         <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Logout</button>
-        <a href="konto.html" class="text-blue-400 hover:underline">👤 Konten verwalten</a>
       </div>
 
       <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
@@ -71,65 +62,49 @@
     const loginArea = document.getElementById("loginArea");
     const adminContent = document.getElementById("adminContent");
     const loginForm = document.getElementById("loginForm");
-    const usernameInput = document.getElementById("usernameInput");
     const passwordInput = document.getElementById("passwordInput");
     const loginError = document.getElementById("loginError");
     const logoutBtn = document.getElementById("logoutBtn");
 
-    let currentUser = null;
+    const ADMIN_PASSWORD = "deinSicheresPasswort123";  // <-- Hier dein Passwort eintragen
 
-    // Funktion zum Login: prüft User in DB
-    async function login(username, password) {
-      const userDoc = await db.collection("users").doc(username).get();
-      if (!userDoc.exists) return false;
-      const data = userDoc.data();
-      if (data.password === password) {
-        currentUser = username;
-        // LastLogin updaten
-        await db.collection("users").doc(username).update({
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-          online: true
-        });
-        return true;
-      }
-      return false;
-    }
-
-    // Logout Funktion
-    async function logout() {
-      if (currentUser) {
-        await db.collection("users").doc(currentUser).update({ online: false });
-        currentUser = null;
-      }
-      adminContent.classList.add("hidden");
-      loginArea.classList.remove("hidden");
-      loginForm.reset();
+    function showError(msg) {
+      loginError.textContent = msg;
+      loginError.classList.remove("hidden");
     }
 
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       loginError.classList.add("hidden");
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value.trim();
-      const success = await login(username, password);
-      if (success) {
+
+      const pw = passwordInput.value.trim();
+      if(pw === ADMIN_PASSWORD) {
         loginArea.classList.add("hidden");
         adminContent.classList.remove("hidden");
         loadWishes();
       } else {
-        loginError.classList.remove("hidden");
+        showError("Falsches Passwort.");
       }
+      loginForm.reset();
     });
 
-    logoutBtn.onclick = logout;
+    logoutBtn.onclick = () => {
+      adminContent.classList.add("hidden");
+      loginArea.classList.remove("hidden");
+    };
 
-    // Lade Songwünsche (wie gehabt)
     async function loadWishes() {
       const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
       const pendingList = document.getElementById("pendingList");
       const processedList = document.getElementById("processedList");
       pendingList.innerHTML = "";
       processedList.innerHTML = "";
+
+      if(snapshot.empty) {
+        pendingList.innerHTML = "<p class='text-center text-gray-400'>Keine Wünsche vorhanden.</p>";
+        processedList.innerHTML = "<p class='text-center text-gray-400'>Keine Wünsche vorhanden.</p>";
+        return;
+      }
 
       snapshot.forEach(doc => {
         const data = doc.data();
@@ -146,10 +121,10 @@
         }
 
         container.innerHTML = `
-          <p><strong>${data.title}</strong> von ${data.artist}</p>
-          ${data.link ? `<p>🔗 <a href="${data.link}" target="_blank" class="text-blue-400 underline">Link</a></p>` : ""}
-          ${data.comment ? `<p>💬 ${data.comment}</p>` : ""}
-          <p>👍 ${data.upvotes} / 👎 ${data.downvotes}</p>
+          <p><strong>${escapeHtml(data.title || "Unbekannter Titel")}</strong> von ${escapeHtml(data.artist || "Unbekannter Künstler")}</p>
+          ${data.link ? `<p>🔗 <a href="${escapeHtml(data.link)}" target="_blank" class="text-blue-400 underline">Link</a></p>` : ""}
+          ${data.comment ? `<p>💬 ${escapeHtml(data.comment)}</p>` : ""}
+          <p>👍 ${data.upvotes || 0} / 👎 ${data.downvotes || 0}</p>
           <p>${statusText}</p>
         `;
 
@@ -214,6 +189,17 @@
           processedList.appendChild(container);
         }
       });
+    }
+
+    // Helfer: HTML escapen
+    function escapeHtml(text) {
+      if (!text) return "";
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
   </script>
 
