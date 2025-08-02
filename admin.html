@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Herder Nacht 2025 - Technik Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #f3f4f6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+    }
+    .hidden {
+      display: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    th {
+      background-color: #10b981;
+      color: white;
+    }
+    button {
+      margin-right: 0.3rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.status-played { background-color: #34d399; color: #065f46; }
+    button.status-rejected { background-color: #f87171; color: #7f1d1d; }
+    button.status-pending { background-color: #fbbf24; color: #92400e; }
+    button.delete-btn { background-color: #ef4444; color: white; }
+  </style>
+</head>
+<body>
+
+  <div id="login-container">
+    <h1 class="text-3xl font-bold text-center mb-6">Admin Login</h1>
+    <form id="loginForm" class="max-w-sm mx-auto space-y-4 bg-white p-6 rounded shadow">
+      <label for="password" class="block font-semibold">Passwort eingeben:</label>
+      <input type="password" id="password" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" required />
+      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">Login</button>
+      <p id="loginError" class="text-red-600 mt-2 hidden">Falsches Passwort, versuche es erneut.</p>
+    </form>
+  </div>
+
+  <div id="dashboard" class="hidden max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-4 text-center">🎛️ Technik-Team Dashboard</h1>
+    <table aria-label="Songwünsche">
+      <thead>
+        <tr>
+          <th>Songtitel</th>
+          <th>Künstler</th>
+          <th>Link</th>
+          <th>Grund</th>
+          <th>Status</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody id="songList">
+        <!-- Songs werden hier eingefügt -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const PASSWORD = 'herdernacht2025'; // Einfaches Passwort, kannst du anpassen
+
+    // Beispiel-Daten - später von Firebase geladen
+    let songs = [
+      { id: 1, title: "Blinding Lights", artist: "The Weeknd", link: "https://youtu.be/4NRXx6U8ABQ", reason: "Klassiker!", status: "offen" },
+      { id: 2, title: "Levitating", artist: "Dua Lipa", link: "", reason: "", status: "gespielt" },
+      { id: 3, title: "Shape of You", artist: "Ed Sheeran", link: "https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3", reason: "Partyhit", status: "abgelehnt" },
+    ];
+
+    const loginContainer = document.getElementById('login-container');
+    const dashboard = document.getElementById('dashboard');
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const songList = document.getElementById('songList');
+
+    function renderSongs() {
+      songList.innerHTML = '';
+      for (const song of songs) {
+        const tr = document.createElement('tr');
+
+        const linkHtml = song.link ? `<a href="${song.link}" target="_blank" class="text-green-600 underline">Link</a>` : '-';
+
+        tr.innerHTML = `
+          <td>${song.title}</td>
+          <td>${song.artist}</td>
+          <td>${linkHtml}</td>
+          <td>${song.reason || '-'}</td>
+          <td>${song.status.charAt(0).toUpperCase() + song.status.slice(1)}</td>
+          <td>
+            <button class="status-played" onclick="updateStatus(${song.id}, 'gespielt')" title="Als gespielt markieren">✅</button>
+            <button class="status-rejected" onclick="updateStatus(${song.id}, 'abgelehnt')" title="Ablehnen">❌</button>
+            <button class="status-pending" onclick="updateStatus(${song.id}, 'offen')" title="Status auf offen setzen">⏳</button>
+            <button class="delete-btn" onclick="deleteSong(${song.id})" title="Löschen">🗑️</button>
+          </td>
+        `;
+        songList.appendChild(tr);
+      }
+    }
+
+    function updateStatus(id, newStatus) {
+      songs = songs.map(s => s.id === id ? { ...s, status: newStatus } : s);
+      renderSongs();
+    }
+
+    function deleteSong(id) {
+      if (confirm('Willst du diesen Song wirklich löschen?')) {
+        songs = songs.filter(s => s.id !== id);
+        renderSongs();
+      }
+    }
+
+    loginForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const pw = document.getElementById('password').value;
+      if (pw === PASSWORD) {
+        loginContainer.classList.add('hidden');
+        dashboard.classList.remove('hidden');
+        renderSongs();
+      } else {
+        loginError.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
