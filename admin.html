@@ -57,6 +57,23 @@
       return select;
     }
 
+    function getStatusBase(status) {
+      // Trennt "abgelehnt: Grund" in ["abgelehnt", "Grund"]
+      if (!status) return "";
+      if (status.includes(":")) {
+        return status.split(":")[0].trim();
+      }
+      return status;
+    }
+
+    function getRejectionReason(status) {
+      if (!status) return "";
+      if (status.includes(":")) {
+        return status.split(":").slice(1).join(":").trim();
+      }
+      return "";
+    }
+
     function renderWish(doc) {
       const data = doc.data();
       const div = document.createElement("div");
@@ -102,10 +119,27 @@
 
         newWishesDiv.appendChild(div);
       } else {
-        const statusSelect = createDropdown(["angenommen", "gespielt", "abgelehnt", "offen"], data.status.split(":")[0], e => {
-          db.collection("wuensche").doc(doc.id).update({ status: e.target.value });
-        });
+        // Status ohne Ablehnungsgrund anzeigen im Dropdown
+        const baseStatus = getStatusBase(data.status);
+        const rejectionReason = getRejectionReason(data.status);
+
+        const statusSelect = createDropdown(
+          ["angenommen", "gespielt", "abgelehnt", "offen"],
+          baseStatus,
+          e => {
+            db.collection("wuensche").doc(doc.id).update({ status: e.target.value });
+          }
+        );
         div.appendChild(statusSelect);
+
+        // Falls abgelehnt, Grund anzeigen (nur Text, kein Dropdown)
+        if (rejectionReason) {
+          const reasonP = document.createElement("p");
+          reasonP.className = "text-sm italic mt-1 text-red-400";
+          reasonP.textContent = `Grund: ${rejectionReason}`;
+          div.appendChild(reasonP);
+        }
+
         processedDiv.appendChild(div);
       }
     }
