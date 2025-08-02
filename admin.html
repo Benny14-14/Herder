@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Adminbereich – Herdernacht</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script>
@@ -19,23 +19,52 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-  </script>
-</head>
-<body class="bg-gray-900 text-white min-h-screen p-6">
-  <div class="max-w-7xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6 text-center">🎧 Adminbereich – Songwünsche verwalten</h1>
-    <div class="mb-6 text-center">
-      <a href="index.html" class="text-blue-400 hover:underline">⬅ Zur Startseite</a>
-    </div>
 
-    <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
-    <div id="pendingList" class="space-y-4"></div>
+    let loggedInUser = null;
 
-    <h2 class="text-xl font-semibold mt-10 mb-4">✅ Bearbeitete Wünsche</h2>
-    <div id="processedList" class="space-y-4"></div>
-  </div>
+    async function login() {
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      if (!username || !password) {
+        alert("Bitte Benutzername und Passwort eingeben.");
+        return;
+      }
 
-  <script>
+      // Nutzer aus Firestore laden
+      const snapshot = await db.collection("users").where("username", "==", username).get();
+      if (snapshot.empty) {
+        alert("Benutzername oder Passwort falsch.");
+        return;
+      }
+
+      let userFound = false;
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        // Klartext-Vergleich des Passworts
+        if (data.password === password) {
+          userFound = true;
+          loggedInUser = { id: doc.id, username: data.username };
+        }
+      });
+
+      if (userFound) {
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("adminContent").style.display = "block";
+        document.getElementById("userGreeting").textContent = `Angemeldet als: ${loggedInUser.username}`;
+        loadWishes();
+      } else {
+        alert("Benutzername oder Passwort falsch.");
+      }
+    }
+
+    function logout() {
+      loggedInUser = null;
+      document.getElementById("loginForm").style.display = "block";
+      document.getElementById("adminContent").style.display = "none";
+      document.getElementById("loginUsername").value = "";
+      document.getElementById("loginPassword").value = "";
+    }
+
     async function loadWishes() {
       const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
       const pendingList = document.getElementById("pendingList");
@@ -127,8 +156,40 @@
         }
       });
     }
-
-    loadWishes();
   </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+  <div class="max-w-7xl mx-auto">
+
+    <!-- Login -->
+    <div id="loginForm" class="max-w-sm mx-auto bg-gray-800 p-6 rounded shadow">
+      <h1 class="text-2xl font-bold mb-4 text-center">🔒 Admin Login</h1>
+      <input id="loginUsername" type="text" placeholder="Benutzername" class="w-full mb-3 p-2 rounded text-black" />
+      <input id="loginPassword" type="password" placeholder="Passwort" class="w-full mb-4 p-2 rounded text-black" />
+      <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-semibold">Anmelden</button>
+    </div>
+
+    <!-- Admin Content -->
+    <div id="adminContent" style="display:none;">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold flex-grow text-center">🎧 Adminbereich – Songwünsche verwalten</h1>
+        <button onclick="logout()" class="ml-6 bg-red-600 hover:bg-red-700 px-3 py-1 rounded">Abmelden</button>
+      </div>
+
+      <p id="userGreeting" class="mb-4 text-yellow-400 font-semibold"></p>
+
+      <div class="mb-6 text-center">
+        <a href="index.html" class="text-blue-400 hover:underline mr-6">⬅ Zur Startseite</a>
+        <a href="konto.html" class="bg-green-600 px-5 py-2 rounded hover:bg-green-700">👥 Konten verwalten</a>
+      </div>
+
+      <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
+      <div id="pendingList" class="space-y-4"></div>
+
+      <h2 class="text-xl font-semibold mt-10 mb-4">✅ Bearbeitete Wünsche</h2>
+      <div id="processedList" class="space-y-4"></div>
+    </div>
+
+  </div>
 </body>
 </html>
