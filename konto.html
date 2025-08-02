@@ -82,18 +82,21 @@
     };
 
     async function loadUsers() {
+      console.log("Lade Nutzer...");
       usersBody.innerHTML = "";
       noUsersMsg.classList.add("hidden");
 
       try {
         const snapshot = await db.collection("users").get();
-
+        console.log("Snapshot erhalten:", snapshot);
         if (snapshot.empty) {
+          console.log("Keine Nutzer gefunden.");
           noUsersMsg.classList.remove("hidden");
           return;
         }
 
         snapshot.forEach(doc => {
+          console.log("Nutzer-Dokument:", doc.id, doc.data());
           const data = doc.data();
           const tr = document.createElement("tr");
           tr.className = "odd:bg-gray-800 even:bg-gray-700";
@@ -181,4 +184,22 @@
       try {
         await db.collection("users").add({
           username: username,
-          passwort: pa
+          passwort: password,
+          online: online,
+          lastLogin: null,
+          lastChange: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert("Neuer Benutzer hinzugefügt!");
+        addUserForm.reset();
+        addUserForm.classList.add("hidden");
+        showAddFormBtn.classList.remove("hidden");
+        loadUsers();
+      } catch (e) {
+        alert("Fehler beim Hinzufügen: " + e.message);
+      }
+    });
+
+    loadUsers();
+  </script>
+</body>
+</html>
