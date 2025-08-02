@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login – Herdernacht Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-6">
+  <div class="max-w-md w-full bg-gray-800 p-8 rounded shadow-lg">
+    <h1 class="text-2xl font-bold mb-6 text-center">🔐 Login</h1>
+    <form id="loginForm" class="space-y-4">
+      <input
+        id="email"
+        type="email"
+        placeholder="E-Mail"
+        required
+        class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none"
+      />
+      <input
+        id="password"
+        type="password"
+        placeholder="Passwort"
+        required
+        class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none"
+      />
+      <button
+        type="submit"
+        class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded font-semibold"
+      >
+        Anmelden
+      </button>
+    </form>
+    <p id="errorMsg" class="text-red-500 mt-4 text-center hidden"></p>
+  </div>
+
+  <script>
+    // Deine Firebase Config hier einfügen
+    const firebaseConfig = {
+      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+      authDomain: "herder-7dd17.firebaseapp.com",
+      projectId: "herder-7dd17",
+      storageBucket: "herder-7dd17.firebasestorage.app",
+      messagingSenderId: "472463332211",
+      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+      measurementId: "G-HR07N6LXGN"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    const loginForm = document.getElementById("loginForm");
+    const errorMsg = document.getElementById("errorMsg");
+
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      errorMsg.classList.add("hidden");
+
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => {
+          window.location.href = "admin.html";
+        })
+        .catch((error) => {
+          errorMsg.textContent = error.message;
+          errorMsg.classList.remove("hidden");
+        });
+    });
+  </script>
+</body>
+</html>
