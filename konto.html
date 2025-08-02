@@ -2,25 +2,31 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Konten verwalten</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Konten verwalten – Herdernacht</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
-<body>
-  <h1>Benutzerkonten</h1>
-  <table border="1" id="usersTable">
-    <thead>
-      <tr>
-        <th>UserID</th>
-        <th>Benutzername</th>
-        <th>Passwort</th>
-        <th>Letzter Login</th>
-        <th>Letzte Änderung</th>
-        <th>Online</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">👥 Benutzerkonten verwalten</h1>
+
+    <table class="min-w-full table-auto border-collapse border border-gray-700">
+      <thead>
+        <tr class="bg-gray-800 text-gray-300">
+          <th class="border border-gray-600 px-4 py-2">UserID</th>
+          <th class="border border-gray-600 px-4 py-2">Benutzername</th>
+          <th class="border border-gray-600 px-4 py-2">Passwort</th>
+          <th class="border border-gray-600 px-4 py-2">Letzter Login</th>
+          <th class="border border-gray-600 px-4 py-2">Online</th>
+        </tr>
+      </thead>
+      <tbody id="usersBody" class="text-center"></tbody>
+    </table>
+
+    <p id="noUsersMsg" class="mt-6 text-center text-gray-400 hidden">Keine Benutzer gefunden.</p>
+  </div>
 
   <script>
     const firebaseConfig = {
@@ -36,35 +42,42 @@
     const db = firebase.firestore();
 
     async function loadUsers() {
-      const tbody = document.querySelector("#usersTable tbody");
-      tbody.innerHTML = ""; // Tabelle leeren
+      const tbody = document.getElementById("usersBody");
+      const noUsersMsg = document.getElementById("noUsersMsg");
+      tbody.innerHTML = "";
+      noUsersMsg.classList.add("hidden");
 
-      const snapshot = await db.collection("users").get();
+      try {
+        const snapshot = await db.collection("users").get();
 
-      if(snapshot.empty) {
-        tbody.innerHTML = "<tr><td colspan='6'>Keine Benutzer gefunden.</td></tr>";
-        return;
+        if (snapshot.empty) {
+          noUsersMsg.classList.remove("hidden");
+          return;
+        }
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const tr = document.createElement("tr");
+          tr.className = "odd:bg-gray-800 even:bg-gray-700";
+
+          const lastLogin = data.lastLogin ? new Date(data.lastLogin.seconds * 1000).toLocaleString() : "-";
+          const online = data.online ? "Ja" : "Nein";
+
+          tr.innerHTML = `
+            <td class="border border-gray-600 px-4 py-2">${doc.id}</td>
+            <td class="border border-gray-600 px-4 py-2">${data.username || "-"}</td>
+            <td class="border border-gray-600 px-4 py-2">${data.passwort || "-"}</td>
+            <td class="border border-gray-600 px-4 py-2">${lastLogin}</td>
+            <td class="border border-gray-600 px-4 py-2">${online}</td>
+          `;
+
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        console.error("Fehler beim Laden der Benutzer:", error);
+        noUsersMsg.textContent = "Fehler beim Laden der Benutzer. Siehe Konsole.";
+        noUsersMsg.classList.remove("hidden");
       }
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const tr = document.createElement("tr");
-
-        // Timestamp in lesbares Datum umwandeln, falls vorhanden
-        const lastLogin = data.lastLogin ? new Date(data.lastLogin.seconds * 1000).toLocaleString() : "-";
-        const lastChange = data.lastChange ? new Date(data.lastChange.seconds * 1000).toLocaleString() : "-";
-
-        tr.innerHTML = `
-          <td>${doc.id}</td>
-          <td>${data.username || "-"}</td>
-          <td>${data.password || "-"}</td>
-          <td>${lastLogin}</td>
-          <td>${lastChange}</td>
-          <td>${data.online ? "Ja" : "Nein"}</td>
-        `;
-
-        tbody.appendChild(tr);
-      });
     }
 
     loadUsers();
