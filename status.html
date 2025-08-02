@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Status – Herdernacht Songwünsche</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -19,40 +19,44 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-  </script>
-</head>
-<body class="bg-gray-900 text-white p-6">
-  <h1 class="text-2xl font-bold mb-4">📋 Aktueller Status der Songwünsche</h1>
-  <button onclick="location.href='index.html'" class="mb-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">🔙 Zurück zur Startseite</button>
 
-  <div class="mb-8">
-    <h2 class="text-xl font-semibold mb-2">🎶 Gespielte Wünsche</h2>
-    <div id="gespieltWishes" class="space-y-4"></div>
-  </div>
-
-  <div class="mb-8">
-    <h2 class="text-xl font-semibold mb-2">❌ Abgelehnte Wünsche</h2>
-    <div id="abgelehntWishes" class="space-y-4"></div>
-  </div>
-
-  <script>
-    const gespieltDiv = document.getElementById("gespieltWishes");
-    const abgelehntDiv = document.getElementById("abgelehntWishes");
-
-    // Session Storage Schlüssel für Votes
-    // speichert pro Song-ID, ob up- oder downgevotet wurde
-    const voteStorageKey = "herdernacht_votes";
-
-    // Hol Votes aus sessionStorage oder neues Objekt
+    // Votes in localStorage speichern, um mehrfaches Voten pro Gerät zu verhindern
     function getVotesFromStorage() {
-      try {
-        return JSON.parse(sessionStorage.getItem(voteStorageKey)) || {};
-      } catch {
-        return {};
-      }
+      const votes = localStorage.getItem("votes");
+      return votes ? JSON.parse(votes) : {};
     }
     function saveVotesToStorage(votes) {
-      sessionStorage.setItem(voteStorageKey, JSON.stringify(votes));
+      localStorage.setItem("votes", JSON.stringify(votes));
+    }
+
+    function updateVoteUI(id, upvotes, downvotes) {
+      const upEl = document.getElementById("upcount-" + id);
+      const downEl = document.getElementById("downcount-" + id);
+      if (upEl) upEl.textContent = upvotes;
+      if (downEl) downEl.textContent = downvotes;
+
+      const votesLocal = getVotesFromStorage();
+      const userVote = votesLocal[id] || null;
+
+      const upBtn = document.getElementById("upvote-" + id);
+      const downBtn = document.getElementById("downvote-" + id);
+
+      if (userVote === "up") {
+        upBtn.classList.add("bg-green-600");
+        upBtn.classList.remove("bg-gray-700", "hover:bg-green-600");
+        downBtn.classList.remove("bg-red-600");
+        downBtn.classList.add("bg-gray-700", "hover:bg-red-600");
+      } else if (userVote === "down") {
+        downBtn.classList.add("bg-red-600");
+        downBtn.classList.remove("bg-gray-700", "hover:bg-red-600");
+        upBtn.classList.remove("bg-green-600");
+        upBtn.classList.add("bg-gray-700", "hover:bg-green-600");
+      } else {
+        upBtn.classList.remove("bg-green-600");
+        upBtn.classList.add("bg-gray-700", "hover:bg-green-600");
+        downBtn.classList.remove("bg-red-600");
+        downBtn.classList.add("bg-gray-700", "hover:bg-red-600");
+      }
     }
 
     function renderWish(doc) {
@@ -60,7 +64,7 @@
       const id = doc.id;
 
       const div = document.createElement("div");
-      div.className = "bg-gray-800 p-4 rounded shadow";
+      div.className = "bg-gray-800 p-4 rounded shadow mb-4";
 
       const hasLink = data.link ? true : false;
       const reasonText = data.status.includes(":") ? `<p class="text-sm italic mt-1">Grund: ${data.status.split(":")[1]}</p>` : "";
@@ -69,27 +73,31 @@
       if (typeof data.upvotes !== "number") data.upvotes = 0;
       if (typeof data.downvotes !== "number") data.downvotes = 0;
 
-      // Lade lokale Votes
+      // Lokale Votes holen
       const votesLocal = getVotesFromStorage();
-      const userVote = votesLocal[id] || null; // "up" / "down" / null
+      const userVote = votesLocal[id] || null;
 
       div.innerHTML = `
-        <p><strong>${data.title}</strong> – ${data.artist}</p>
-        ${hasLink ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
-        ${reasonText}
+        <p class="text-lg font-semibold">${data.title} – ${data.artist}</p>
+        ${hasLink ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank" rel="noopener noreferrer">🔗 Link</a>` : ""}
         <div class="mt-2 flex items-center space-x-4">
-          <button id="upvote-${id}" class="px-3 py-1 rounded ${userVote === 'up' ? 'bg-green-600' : 'bg-gray-700 hover:bg-green-600'}">👍 <span id="upcount-${id}">${data.upvotes}</span></button>
-          <button id="downvote-${id}" class="px-3 py-1 rounded ${userVote === 'down' ? 'bg-red-600' : 'bg-gray-700 hover:bg-red-600'}">👎 <span id="downcount-${id}">${data.downvotes}</span></button>
+          <button id="upvote-${id}" class="px-3 py-1 rounded cursor-pointer ${userVote === 'up' ? 'bg-green-600' : 'bg-gray-700 hover:bg-green-600'}">👍 <span id="upcount-${id}">${data.upvotes}</span></button>
+          <button id="downvote-${id}" class="px-3 py-1 rounded cursor-pointer ${userVote === 'down' ? 'bg-red-600' : 'bg-gray-700 hover:bg-red-600'}">👎 <span id="downcount-${id}">${data.downvotes}</span></button>
         </div>
+        <p class="mt-2 font-semibold">
+          Status: <span class="${data.status.startsWith('abgelehnt') ? 'text-red-400' : 'text-green-400'}">
+            ${data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+          </span>
+        </p>
+        ${reasonText}
       `;
 
-      // Upvote Klick
+      // Eventhandler Upvote
       div.querySelector(`#upvote-${id}`).onclick = () => {
-        if (userVote === "up") return; // nur einmal upvoten
+        if (userVote === "up") return;
         const batch = db.batch();
         const ref = db.collection("wuensche").doc(id);
 
-        // Wenn vorher downgevotet, downvote entfernen
         if (userVote === "down") {
           batch.update(ref, { downvotes: data.downvotes - 1 });
           data.downvotes--;
@@ -104,13 +112,12 @@
         });
       };
 
-      // Downvote Klick
+      // Eventhandler Downvote
       div.querySelector(`#downvote-${id}`).onclick = () => {
-        if (userVote === "down") return; // nur einmal downvoten
+        if (userVote === "down") return;
         const batch = db.batch();
         const ref = db.collection("wuensche").doc(id);
 
-        // Wenn vorher upgevotet, upvote entfernen
         if (userVote === "up") {
           batch.update(ref, { upvotes: data.upvotes - 1 });
           data.upvotes--;
@@ -128,51 +135,30 @@
       return div;
     }
 
-    function updateVoteUI(id, up, down) {
-      const upCountSpan = document.getElementById(`upcount-${id}`);
-      const downCountSpan = document.getElementById(`downcount-${id}`);
-      if (upCountSpan) upCountSpan.textContent = up;
-      if (downCountSpan) downCountSpan.textContent = down;
-
-      // Buttons einfärben je nach Status
-      const votesLocal = getVotesFromStorage();
-      const userVote = votesLocal[id] || null;
-
-      const upBtn = document.getElementById(`upvote-${id}`);
-      const downBtn = document.getElementById(`downvote-${id}`);
-
-      if (upBtn && downBtn) {
-        if (userVote === "up") {
-          upBtn.classList.add("bg-green-600");
-          upBtn.classList.remove("bg-gray-700", "hover:bg-green-600");
-          downBtn.classList.remove("bg-red-600");
-          downBtn.classList.add("bg-gray-700", "hover:bg-red-600");
-        } else if (userVote === "down") {
-          downBtn.classList.add("bg-red-600");
-          downBtn.classList.remove("bg-gray-700", "hover:bg-red-600");
-          upBtn.classList.remove("bg-green-600");
-          upBtn.classList.add("bg-gray-700", "hover:bg-green-600");
-        } else {
-          upBtn.classList.remove("bg-green-600");
-          upBtn.classList.add("bg-gray-700", "hover:bg-green-600");
-          downBtn.classList.remove("bg-red-600");
-          downBtn.classList.add("bg-gray-700", "hover:bg-red-600");
-        }
-      }
+    function loadWishes() {
+      const container = document.getElementById("wishesContainer");
+      db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+        container.innerHTML = "";
+        snapshot.forEach(doc => {
+          const wishDiv = renderWish(doc);
+          container.appendChild(wishDiv);
+        });
+      });
     }
 
-    db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-      gespieltDiv.innerHTML = "";
-      abgelehntDiv.innerHTML = "";
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.status === "gespielt") {
-          gespieltDiv.appendChild(renderWish(doc));
-        } else if (data.status.startsWith("abgelehnt")) {
-          abgelehntDiv.appendChild(renderWish(doc));
-        }
-      });
+    document.addEventListener("DOMContentLoaded", () => {
+      loadWishes();
+
+      document.getElementById("backBtn").onclick = () => {
+        location.href = "index.html";
+      };
     });
   </script>
+</head>
+<body class="bg-gray-900 text-white p-6 min-h-screen">
+  <h1 class="text-2xl font-bold mb-6">🎵 Status – Herdernacht Songwünsche</h1>
+  <button id="backBtn" class="mb-6 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">🔙 Zurück zur Startseite</button>
+
+  <div id="wishesContainer" class="space-y-4"></div>
 </body>
 </html>
