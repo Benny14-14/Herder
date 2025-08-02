@@ -61,10 +61,18 @@
       const data = doc.data();
       const div = document.createElement("div");
       div.className = "bg-gray-800 p-4 rounded shadow";
+      let statusText = data.status;
+
+      // Wenn abgelehnt mit Grund, nur den Grund anzeigen
+      if (data.status && data.status.startsWith("abgelehnt:")) {
+        statusText = "Abgelehnt: " + data.status.split(":")[1].trim();
+      }
+
       div.innerHTML = `
         <p><strong>${data.title}</strong> – ${data.artist}</p>
         ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
         ${data.reason ? `<p class="text-sm italic mt-1">${data.reason}</p>` : ""}
+        <p class="mt-2 font-semibold">Status: ${statusText}</p>
       `;
 
       if (data.status === "offen") {
@@ -95,9 +103,8 @@
 
         newWishesDiv.appendChild(div);
       } else {
-        const statusBase = data.status.includes(":") ? data.status.split(":")[0] : data.status;
-
-        const statusSelect = createDropdown(["angenommen", "gespielt", "abgelehnt", "offen"], statusBase, e => {
+        // Für bearbeitete Wünsche auch Löschbutton anbieten
+        const statusSelect = createDropdown(["angenommen", "gespielt", "abgelehnt", "offen"], data.status.split(":")[0], e => {
           db.collection("wuensche").doc(doc.id).update({ status: e.target.value });
         });
 
@@ -108,7 +115,6 @@
 
         div.appendChild(statusSelect);
         div.appendChild(deleteBtn);
-
         processedDiv.appendChild(div);
       }
     }
