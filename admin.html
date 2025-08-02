@@ -8,58 +8,38 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-6 flex flex-col items-center justify-center">
+<body class="bg-gray-900 text-white min-h-screen p-6">
 
-  <!-- Login Container -->
-  <div id="loginContainer" class="bg-gray-800 p-8 rounded shadow max-w-md w-full">
-    <h1 class="text-3xl font-bold mb-6 text-center">🔒 Login</h1>
-    <p id="errorMsg" class="mb-4 text-red-500 text-center hidden"></p>
-    <form id="loginForm" class="space-y-4">
-      <label class="block">
-        Benutzername:
-        <input
-          type="text"
-          id="usernameInput"
-          class="w-full mt-1 p-2 rounded bg-gray-700 text-white"
-          autocomplete="username"
-          required
-        />
-      </label>
-      <label class="block">
-        Passwort:
-        <input
-          type="password"
-          id="passwordInput"
-          class="w-full mt-1 p-2 rounded bg-gray-700 text-white"
-          autocomplete="current-password"
-          required
-        />
-      </label>
-      <button
-        type="submit"
-        class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded text-white font-semibold"
-      >
-        Anmelden
-      </button>
-    </form>
-  </div>
+  <div class="max-w-6xl mx-auto">
 
-  <!-- Admin Content Container (versteckt, bis login erfolgt) -->
-  <div id="adminContainer" class="max-w-6xl mx-auto w-full hidden flex-col">
-    <header class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">🛠 Admin Panel</h1>
-      <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Abmelden</button>
-    </header>
+    <h1 class="text-3xl font-bold mb-6">🛠 Admin Panel – Songwünsche</h1>
 
-    <section id="content">
-      <p>Lade Daten...</p>
-    </section>
+    <input
+      type="text"
+      id="filterInput"
+      placeholder="Filtern nach Song oder User..."
+      class="mb-4 w-full p-2 rounded bg-gray-700 text-white"
+    />
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full table-auto border-collapse border border-gray-700">
+        <thead>
+          <tr class="bg-gray-800 text-left">
+            <th class="border border-gray-600 px-4 py-2">Zeit</th>
+            <th class="border border-gray-600 px-4 py-2">Song</th>
+            <th class="border border-gray-600 px-4 py-2">User</th>
+            <th class="border border-gray-600 px-4 py-2">Kommentar</th>
+          </tr>
+        </thead>
+        <tbody id="wuenscheTableBody">
+          <tr><td colspan="4" class="text-center p-4">Lade Daten...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
   <script>
-    // ==========================
-    // Firebase konfigurieren
-    // ==========================
     const firebaseConfig = {
       apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
       authDomain: "herder-7dd17.firebaseapp.com",
@@ -73,121 +53,78 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ==========================
-    // Element-Referenzen
-    // ==========================
-    const loginContainer = document.getElementById("loginContainer");
-    const adminContainer = document.getElementById("adminContainer");
-    const loginForm = document.getElementById("loginForm");
-    const errorMsg = document.getElementById("errorMsg");
-    const usernameInput = document.getElementById("usernameInput");
-    const passwordInput = document.getElementById("passwordInput");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const content = document.getElementById("content");
+    const tableBody = document.getElementById("wuenscheTableBody");
+    const filterInput = document.getElementById("filterInput");
 
-    // ==========================
-    // Funktionen um Anzeige zu wechseln
-    // ==========================
-    function showAdminPanel(username) {
-      loginContainer.classList.add("hidden");
-      adminContainer.classList.remove("hidden");
-      content.innerHTML = `<p>Willkommen, <strong>${username}</strong>!</p><p>Hier kannst du jetzt deine Admin-Daten laden und bearbeiten.</p>`;
-      loadWuensche();
-    }
+    let wuenscheData = [];
 
-    function showLogin() {
-      loginContainer.classList.remove("hidden");
-      adminContainer.classList.add("hidden");
-      errorMsg.classList.add("hidden");
-      loginForm.reset();
-    }
-
-    // ==========================
-    // Prüfen, ob User eingeloggt ist (lokal)
-    // ==========================
-    const loggedInUserId = localStorage.getItem("loggedInUserId");
-    const loggedInUsername = localStorage.getItem("loggedInUsername");
-
-    if (loggedInUserId && loggedInUsername) {
-      // Wenn eingeloggt: Admin-Bereich zeigen
-      showAdminPanel(loggedInUsername);
-    } else {
-      // Wenn nicht eingeloggt: Login-Form zeigen (keine Weiterleitung)
-      showLogin();
-    }
-
-    // ==========================
-    // Login-Formular Event
-    // ==========================
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value;
-
-      errorMsg.classList.add("hidden");
-      errorMsg.textContent = "";
-
-      try {
-        const querySnapshot = await db.collection("users").where("username", "==", username).get();
-
-        if (querySnapshot.empty) {
-          throw new Error("Benutzername nicht gefunden");
-        }
-
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
-
-        if (userData.passwort !== password) {
-          throw new Error("Falsches Passwort");
-        }
-
-        // Login erfolgreich: lokal speichern
-        localStorage.setItem("loggedInUserId", userDoc.id);
-        localStorage.setItem("loggedInUsername", username);
-
-        showAdminPanel(username);
-
-      } catch (error) {
-        errorMsg.textContent = error.message;
-        errorMsg.classList.remove("hidden");
-      }
-    });
-
-    // ==========================
-    // Logout Event
-    // ==========================
-    logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem("loggedInUserId");
-      localStorage.removeItem("loggedInUsername");
-      showLogin();
-    });
-
-    // ==========================
-    // Beispiel: Wünsche laden
-    // ==========================
     async function loadWuensche() {
-      content.innerHTML += "<p>Lade Wünsche...</p>";
-
       try {
         const snapshot = await db.collection("wuensche").get();
+
         if (snapshot.empty) {
-          content.innerHTML += "<p>Keine Wünsche gefunden.</p>";
+          tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4">Keine Wünsche gefunden.</td></tr>`;
           return;
         }
 
-        let html = `<h2 class="text-xl font-bold mt-6 mb-2">Songwünsche</h2><ul class="list-disc ml-6">`;
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          html += `<li><strong>${data.song || "Unbekannter Song"}</strong> von ${data.user || "Unbekannter User"}</li>`;
-        });
-        html += "</ul>";
-        content.innerHTML += html;
+        wuenscheData = snapshot.docs.map(doc => doc.data());
+        renderTable(wuenscheData);
 
       } catch (error) {
-        content.innerHTML += `<p class="text-red-500">Fehler beim Laden der Wünsche: ${error.message}</p>`;
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500">Fehler beim Laden: ${error.message}</td></tr>`;
       }
     }
+
+    function renderTable(data) {
+      if (data.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4">Keine passenden Ergebnisse.</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = data.map(wunsch => {
+        let zeitStr = "";
+        if (wunsch.zeit && wunsch.zeit.toDate) {
+          const date = wunsch.zeit.toDate();
+          zeitStr = date.toLocaleString("de-DE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+
+        return `
+          <tr class="border border-gray-700 hover:bg-gray-700">
+            <td class="border border-gray-600 px-4 py-2">${escapeHtml(zeitStr)}</td>
+            <td class="border border-gray-600 px-4 py-2">${escapeHtml(wunsch.song || "")}</td>
+            <td class="border border-gray-600 px-4 py-2">${escapeHtml(wunsch.user || "")}</td>
+            <td class="border border-gray-600 px-4 py-2">${escapeHtml(wunsch.kommentar || "")}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    filterInput.addEventListener("input", () => {
+      const filterValue = filterInput.value.toLowerCase();
+      const filtered = wuenscheData.filter(wunsch => {
+        const song = (wunsch.song || "").toLowerCase();
+        const user = (wunsch.user || "").toLowerCase();
+        return song.includes(filterValue) || user.includes(filterValue);
+      });
+      renderTable(filtered);
+    });
+
+    loadWuensche();
   </script>
 </body>
 </html>
