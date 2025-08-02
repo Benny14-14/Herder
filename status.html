@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Status – Herdernacht Songwünsche</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Herdernacht Songwünsche</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script>
@@ -21,81 +21,45 @@
     const db = firebase.firestore();
   </script>
 </head>
-<body class="bg-gray-900 text-white p-6">
-  <h1 class="text-2xl font-bold mb-4">🎵 Status der Songwünsche</h1>
-  <button onclick="location.href='index.html'" class="mb-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">🔙 Zurück zur Startseite</button>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-4 text-center">🎵 Wunsch einreichen</h1>
 
-  <div id="wishesList" class="space-y-4"></div>
+    <form id="wishForm" class="space-y-4">
+      <input type="text" id="title" placeholder="Songtitel" required class="w-full p-2 rounded text-black" />
+      <input type="text" id="artist" placeholder="Interpret" required class="w-full p-2 rounded text-black" />
+      <input type="url" id="link" placeholder="YouTube/Spotify-Link (optional)" class="w-full p-2 rounded text-black" />
+      <textarea id="comment" placeholder="Kommentar (optional)" class="w-full p-2 rounded text-black"></textarea>
+      <button type="submit" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full">✅ Wunsch absenden</button>
+    </form>
+
+    <button onclick="location.href='status.html'" class="mt-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 w-full">📄 Bisherige Wünsche anzeigen</button>
+  </div>
+
+  <button onclick="location.href='admin.html'" class="mt-8 text-sm text-gray-400 hover:text-gray-200">🔒 Bearbeiten (Login)</button>
 
   <script>
-    const wishesList = document.getElementById("wishesList");
+    const form = document.getElementById("wishForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value;
+      const artist = document.getElementById("artist").value;
+      const link = document.getElementById("link").value;
+      const comment = document.getElementById("comment").value;
 
-    function getStatusBase(status) {
-      if (!status) return "";
-      if (status.includes(":")) {
-        return status.split(":")[0].trim();
-      }
-      return status;
-    }
+      await db.collection("wuensche").add({
+        title,
+        artist,
+        link,
+        comment,
+        status: "offen",
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        upvotes: 0,
+        downvotes: 0
+      });
 
-    function getRejectionReason(status) {
-      if (!status) return "";
-      if (status.includes(":")) {
-        return status.split(":").slice(1).join(":").trim();
-      }
-      return "";
-    }
-
-    function createButton(text, onClick, className) {
-      const btn = document.createElement("button");
-      btn.textContent = text;
-      btn.className = className;
-      btn.onclick = onClick;
-      return btn;
-    }
-
-    function renderWish(doc) {
-      const data = doc.data();
-      const div = document.createElement("div");
-      div.className = "bg-gray-800 p-4 rounded shadow";
-
-      const statusBase = getStatusBase(data.status);
-      const rejectionReason = getRejectionReason(data.status);
-
-      div.innerHTML = `
-        <p><strong>${data.title}</strong> – ${data.artist}</p>
-        ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
-        <p class="mt-1 text-yellow-300">👍 ${data.upvotes || 0}  |  👎 ${data.downvotes || 0}</p>
-        <p class="mt-1 font-semibold">Status: ${statusBase.charAt(0).toUpperCase() + statusBase.slice(1)}</p>
-      `;
-
-      if (rejectionReason) {
-        const reasonP = document.createElement("p");
-        reasonP.className = "text-sm italic mt-1 text-red-400";
-        reasonP.textContent = `Grund: ${rejectionReason}`;
-        div.appendChild(reasonP);
-      }
-
-      // Upvote / Downvote Buttons
-      const upvoteBtn = createButton("👍", () => {
-        const newUp = (data.upvotes || 0) + 1;
-        db.collection("wuensche").doc(doc.id).update({ upvotes: newUp });
-      }, "bg-green-600 px-3 py-1 rounded mr-2 mt-3 hover:bg-green-700");
-
-      const downvoteBtn = createButton("👎", () => {
-        const newDown = (data.downvotes || 0) + 1;
-        db.collection("wuensche").doc(doc.id).update({ downvotes: newDown });
-      }, "bg-red-600 px-3 py-1 rounded mt-3 hover:bg-red-700");
-
-      div.appendChild(upvoteBtn);
-      div.appendChild(downvoteBtn);
-
-      wishesList.appendChild(div);
-    }
-
-    db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-      wishesList.innerHTML = "";
-      snapshot.forEach(doc => renderWish(doc));
+      form.reset();
+      alert("Wunsch wurde eingereicht!");
     });
   </script>
 </body>
