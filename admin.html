@@ -20,28 +20,29 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 1rem;
+      margin-bottom: 2rem;
     }
     th, td {
       border: 1px solid #d1d5db;
       padding: 0.5rem;
       text-align: left;
+      vertical-align: middle;
     }
     th {
       background-color: #10b981;
       color: white;
     }
-    button {
-      margin-right: 0.3rem;
+    select {
       padding: 0.25rem 0.5rem;
       border-radius: 0.25rem;
-      border: none;
+      border: 1px solid #9ca3af;
       cursor: pointer;
       font-weight: 600;
     }
-    button.status-played { background-color: #34d399; color: #065f46; }
-    button.status-rejected { background-color: #f87171; color: #7f1d1d; }
-    button.status-pending { background-color: #fbbf24; color: #92400e; }
-    button.delete-btn { background-color: #ef4444; color: white; }
+    a {
+      color: #059669;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -56,75 +57,128 @@
     </form>
   </div>
 
-  <div id="dashboard" class="hidden max-w-4xl mx-auto">
-    <h1 class="text-3xl font-bold mb-4 text-center">🎛️ Technik-Team Dashboard</h1>
-    <table aria-label="Songwünsche">
-      <thead>
-        <tr>
-          <th>Songtitel</th>
-          <th>Künstler</th>
-          <th>Link</th>
-          <th>Grund</th>
-          <th>Status</th>
-          <th>Aktionen</th>
-        </tr>
-      </thead>
-      <tbody id="songList">
-        <!-- Songs werden hier eingefügt -->
-      </tbody>
-    </table>
+  <div id="dashboard" class="hidden max-w-5xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">🎛️ Technik-Team Dashboard</h1>
+
+    <section>
+      <h2 class="text-2xl font-semibold mb-2">Neue Wünsche (offen)</h2>
+      <table aria-label="Neue Songwünsche">
+        <thead>
+          <tr>
+            <th>Songtitel</th>
+            <th>Künstler</th>
+            <th>Link</th>
+            <th>Grund</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="newRequests"></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-semibold mb-2">Bearbeitete Wünsche (gespielt, abgelehnt)</h2>
+      <table aria-label="Bearbeitete Songwünsche">
+        <thead>
+          <tr>
+            <th>Songtitel</th>
+            <th>Künstler</th>
+            <th>Link</th>
+            <th>Grund</th>
+            <th>Status</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="processedRequests"></tbody>
+      </table>
+    </section>
   </div>
 
   <script>
-    const PASSWORD = 'herdernacht2025'; // Einfaches Passwort, kannst du anpassen
+    const PASSWORD = 'herdernacht2025'; // Einfaches Passwort
 
-    // Beispiel-Daten - später von Firebase geladen
+    // Beispiel-Daten - später von Firebase
     let songs = [
       { id: 1, title: "Blinding Lights", artist: "The Weeknd", link: "https://youtu.be/4NRXx6U8ABQ", reason: "Klassiker!", status: "offen" },
       { id: 2, title: "Levitating", artist: "Dua Lipa", link: "", reason: "", status: "gespielt" },
       { id: 3, title: "Shape of You", artist: "Ed Sheeran", link: "https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3", reason: "Partyhit", status: "abgelehnt" },
+      { id: 4, title: "Bad Habits", artist: "Ed Sheeran", link: "", reason: "Cooler Beat", status: "offen" },
     ];
 
     const loginContainer = document.getElementById('login-container');
     const dashboard = document.getElementById('dashboard');
     const loginForm = document.getElementById('loginForm');
     const loginError = document.getElementById('loginError');
-    const songList = document.getElementById('songList');
+    const newRequests = document.getElementById('newRequests');
+    const processedRequests = document.getElementById('processedRequests');
 
-    function renderSongs() {
-      songList.innerHTML = '';
-      for (const song of songs) {
+    function createLinkHtml(link) {
+      if (!link) return '-';
+      return `<a href="${link}" target="_blank" rel="noopener noreferrer">Link</a>`;
+    }
+
+    function renderTables() {
+      // Neue Wünsche (offen)
+      newRequests.innerHTML = '';
+      songs.filter(s => s.status === 'offen').forEach(song => {
         const tr = document.createElement('tr');
-
-        const linkHtml = song.link ? `<a href="${song.link}" target="_blank" class="text-green-600 underline">Link</a>` : '-';
-
         tr.innerHTML = `
           <td>${song.title}</td>
           <td>${song.artist}</td>
-          <td>${linkHtml}</td>
+          <td>${createLinkHtml(song.link)}</td>
+          <td>${song.reason || '-'}</td>
+          <td>
+            <select data-id="${song.id}">
+              <option value="" selected>-- auswählen --</option>
+              <option value="gespielt">Annehmen (gespielt)</option>
+              <option value="abgelehnt">Ablehnen</option>
+              <option value="löschen">Löschen</option>
+            </select>
+          </td>
+        `;
+        newRequests.appendChild(tr);
+      });
+
+      // Bearbeitete Wünsche (gespielt, abgelehnt)
+      processedRequests.innerHTML = '';
+      songs.filter(s => s.status !== 'offen').forEach(song => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${song.title}</td>
+          <td>${song.artist}</td>
+          <td>${createLinkHtml(song.link)}</td>
           <td>${song.reason || '-'}</td>
           <td>${song.status.charAt(0).toUpperCase() + song.status.slice(1)}</td>
           <td>
-            <button class="status-played" onclick="updateStatus(${song.id}, 'gespielt')" title="Als gespielt markieren">✅</button>
-            <button class="status-rejected" onclick="updateStatus(${song.id}, 'abgelehnt')" title="Ablehnen">❌</button>
-            <button class="status-pending" onclick="updateStatus(${song.id}, 'offen')" title="Status auf offen setzen">⏳</button>
-            <button class="delete-btn" onclick="deleteSong(${song.id})" title="Löschen">🗑️</button>
+            <select data-id="${song.id}">
+              <option value="" selected>-- auswählen --</option>
+              <option value="offen">Zurück in Warteschlange</option>
+              <option value="gespielt">Als gespielt markieren</option>
+              <option value="abgelehnt">Ablehnen</option>
+              <option value="löschen">Löschen</option>
+            </select>
           </td>
         `;
-        songList.appendChild(tr);
-      }
-    }
+        processedRequests.appendChild(tr);
+      });
 
-    function updateStatus(id, newStatus) {
-      songs = songs.map(s => s.id === id ? { ...s, status: newStatus } : s);
-      renderSongs();
-    }
-
-    function deleteSong(id) {
-      if (confirm('Willst du diesen Song wirklich löschen?')) {
-        songs = songs.filter(s => s.id !== id);
-        renderSongs();
-      }
+      // Event Listener für alle Dropdowns
+      document.querySelectorAll('select[data-id]').forEach(select => {
+        select.onchange = e => {
+          const id = Number(e.target.getAttribute('data-id'));
+          const value = e.target.value;
+          if (!value) return;
+          if (value === 'löschen') {
+            if (confirm('Willst du diesen Song wirklich löschen?')) {
+              songs = songs.filter(s => s.id !== id);
+            }
+          } else {
+            // Status ändern
+            songs = songs.map(s => s.id === id ? {...s, status: value} : s);
+          }
+          renderTables();
+        };
+      });
     }
 
     loginForm.addEventListener('submit', e => {
@@ -133,7 +187,7 @@
       if (pw === PASSWORD) {
         loginContainer.classList.add('hidden');
         dashboard.classList.remove('hidden');
-        renderSongs();
+        renderTables();
       } else {
         loginError.classList.remove('hidden');
       }
