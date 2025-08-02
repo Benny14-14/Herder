@@ -23,7 +23,7 @@
 
   <script>
     // Prüfe beim Laden der Seite, ob der User eingeloggt ist
-  const loggedInUserId = sessionStorage.getItem("loggedInUserId");
+  const loggedInUserId = localStorage.getItem("loggedInUserId");
 
   if (!loggedInUserId) {
     // Wenn nicht eingeloggt, zurück zur Login-Seite
