@@ -19,52 +19,111 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+  </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
 
-    let loggedInUser = null;
+  <div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">🎧 Adminbereich – Songwünsche verwalten</h1>
 
-    async function login() {
-      const username = document.getElementById("loginUsername").value.trim();
-      const password = document.getElementById("loginPassword").value;
-      if (!username || !password) {
-        alert("Bitte Benutzername und Passwort eingeben.");
-        return;
+    <!-- Login-Bereich -->
+    <div id="loginArea" class="max-w-md mx-auto bg-gray-800 p-6 rounded shadow">
+      <h2 class="text-xl font-semibold mb-4">🔐 Login</h2>
+      <form id="loginForm" class="space-y-4">
+        <input
+          type="text"
+          id="usernameInput"
+          placeholder="Benutzername"
+          required
+          class="w-full p-2 rounded text-black"
+          autocomplete="username"
+        />
+        <input
+          type="password"
+          id="passwordInput"
+          placeholder="Passwort"
+          required
+          class="w-full p-2 rounded text-black"
+          autocomplete="current-password"
+        />
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded">Login</button>
+      </form>
+      <p id="loginError" class="mt-2 text-red-500 hidden">Ungültiger Benutzername oder Passwort.</p>
+    </div>
+
+    <!-- Admin-Content -->
+    <div id="adminContent" class="hidden">
+
+      <div class="mb-6 flex justify-between items-center">
+        <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Logout</button>
+        <a href="konto.html" class="text-blue-400 hover:underline">👤 Konten verwalten</a>
+      </div>
+
+      <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
+      <div id="pendingList" class="space-y-4"></div>
+
+      <h2 class="text-xl font-semibold mt-10 mb-4">✅ Bearbeitete Wünsche</h2>
+      <div id="processedList" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <script>
+    const loginArea = document.getElementById("loginArea");
+    const adminContent = document.getElementById("adminContent");
+    const loginForm = document.getElementById("loginForm");
+    const usernameInput = document.getElementById("usernameInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const loginError = document.getElementById("loginError");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    let currentUser = null;
+
+    // Funktion zum Login: prüft User in DB
+    async function login(username, password) {
+      const userDoc = await db.collection("users").doc(username).get();
+      if (!userDoc.exists) return false;
+      const data = userDoc.data();
+      if (data.password === password) {
+        currentUser = username;
+        // LastLogin updaten
+        await db.collection("users").doc(username).update({
+          lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+          online: true
+        });
+        return true;
       }
+      return false;
+    }
 
-      // Nutzer aus Firestore laden
-      const snapshot = await db.collection("users").where("username", "==", username).get();
-      if (snapshot.empty) {
-        alert("Benutzername oder Passwort falsch.");
-        return;
+    // Logout Funktion
+    async function logout() {
+      if (currentUser) {
+        await db.collection("users").doc(currentUser).update({ online: false });
+        currentUser = null;
       }
+      adminContent.classList.add("hidden");
+      loginArea.classList.remove("hidden");
+      loginForm.reset();
+    }
 
-      let userFound = false;
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        // Klartext-Vergleich des Passworts
-        if (data.password === password) {
-          userFound = true;
-          loggedInUser = { id: doc.id, username: data.username };
-        }
-      });
-
-      if (userFound) {
-        document.getElementById("loginForm").style.display = "none";
-        document.getElementById("adminContent").style.display = "block";
-        document.getElementById("userGreeting").textContent = `Angemeldet als: ${loggedInUser.username}`;
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginError.classList.add("hidden");
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      const success = await login(username, password);
+      if (success) {
+        loginArea.classList.add("hidden");
+        adminContent.classList.remove("hidden");
         loadWishes();
       } else {
-        alert("Benutzername oder Passwort falsch.");
+        loginError.classList.remove("hidden");
       }
-    }
+    });
 
-    function logout() {
-      loggedInUser = null;
-      document.getElementById("loginForm").style.display = "block";
-      document.getElementById("adminContent").style.display = "none";
-      document.getElementById("loginUsername").value = "";
-      document.getElementById("loginPassword").value = "";
-    }
+    logoutBtn.onclick = logout;
 
+    // Lade Songwünsche (wie gehabt)
     async function loadWishes() {
       const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
       const pendingList = document.getElementById("pendingList");
@@ -157,39 +216,6 @@
       });
     }
   </script>
-</head>
-<body class="bg-gray-900 text-white min-h-screen p-6">
-  <div class="max-w-7xl mx-auto">
 
-    <!-- Login -->
-    <div id="loginForm" class="max-w-sm mx-auto bg-gray-800 p-6 rounded shadow">
-      <h1 class="text-2xl font-bold mb-4 text-center">🔒 Admin Login</h1>
-      <input id="loginUsername" type="text" placeholder="Benutzername" class="w-full mb-3 p-2 rounded text-black" />
-      <input id="loginPassword" type="password" placeholder="Passwort" class="w-full mb-4 p-2 rounded text-black" />
-      <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-semibold">Anmelden</button>
-    </div>
-
-    <!-- Admin Content -->
-    <div id="adminContent" style="display:none;">
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold flex-grow text-center">🎧 Adminbereich – Songwünsche verwalten</h1>
-        <button onclick="logout()" class="ml-6 bg-red-600 hover:bg-red-700 px-3 py-1 rounded">Abmelden</button>
-      </div>
-
-      <p id="userGreeting" class="mb-4 text-yellow-400 font-semibold"></p>
-
-      <div class="mb-6 text-center">
-        <a href="index.html" class="text-blue-400 hover:underline mr-6">⬅ Zur Startseite</a>
-        <a href="konto.html" class="bg-green-600 px-5 py-2 rounded hover:bg-green-700">👥 Konten verwalten</a>
-      </div>
-
-      <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
-      <div id="pendingList" class="space-y-4"></div>
-
-      <h2 class="text-xl font-semibold mt-10 mb-4">✅ Bearbeitete Wünsche</h2>
-      <div id="processedList" class="space-y-4"></div>
-    </div>
-
-  </div>
 </body>
 </html>
