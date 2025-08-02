@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Musikwunsch – Herder Nacht 2025</title>
+  <script defer>
+    function handleSubmit(e) {
+      e.preventDefault();
+      const title = document.getElementById('songTitle').value;
+      const artist = document.getElementById('artist').value;
+      const link = document.getElementById('link').value;
+      const reason = document.getElementById('reason').value;
+      const preview = document.getElementById('preview');
+
+      let output = `✅ Wunsch gesendet:\n🎵 ${title} – ${artist}`;
+      if (link) output += `\n🔗 Link: ${link}`;
+      if (reason) output += `\n💬 Grund: ${reason}`;
+
+      alert(output);
+      document.getElementById('wishForm').reset();
+      preview.innerHTML = '';
+    }
+
+    function handlePreview() {
+      const link = document.getElementById('link').value;
+      const preview = document.getElementById('preview');
+      if (link.includes('youtube') || link.includes('youtu.be')) {
+        const videoId = link.split('v=')[1]?.split('&')[0] || link.split('.be/')[1];
+        if (videoId) {
+          preview.innerHTML = `<iframe class="w-full aspect-video" src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>`;
+        }
+      } else if (link.includes('spotify')) {
+        const embed = link.replace('/track/', '/embed/track/');
+        preview.innerHTML = `<iframe class="w-full h-20" src="${embed}" allow="encrypted-media"></iframe>`;
+      } else {
+        preview.innerHTML = '';
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+    <h1 class="text-2xl font-bold text-center mb-4">🎶 Musikwunsch</h1>
+    <form id="wishForm" onsubmit="handleSubmit(event)">
+      <label class="block mb-2">Songtitel *</label>
+      <input id="songTitle" required class="w-full mb-4 p-2 border rounded-xl" type="text" placeholder="z. B. Blinding Lights">
+
+      <label class="block mb-2">Künstler:in *</label>
+      <input id="artist" required class="w-full mb-4 p-2 border rounded-xl" type="text" placeholder="z. B. The Weeknd">
+
+      <label class="block mb-2">YouTube-/Spotify-Link (optional)</label>
+      <input id="link" class="w-full mb-4 p-2 border rounded-xl" type="url" onchange="handlePreview()" placeholder="https://...">
+
+      <label class="block mb-2">Warum dieser Song? (optional)</label>
+      <textarea id="reason" class="w-full mb-4 p-2 border rounded-xl" placeholder="z. B. Stimmung, Insider, Klassenhit..."></textarea>
+
+      <div id="preview" class="mb-4"></div>
+
+      <button class="w-full bg-green-500 text-white py-2 rounded-xl hover:bg-green-600">Absenden</button>
+    </form>
+  </div>
+</body>
+</html>
