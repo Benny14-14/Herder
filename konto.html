@@ -7,196 +7,197 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen p-6">
-  <div class="max-w-6xl mx-auto">
+  <div class="max-w-8xl mx-auto">
+
     <h1 class="text-3xl font-bold mb-6 text-center">👥 Benutzerkonten verwalten</h1>
 
-    <table class="min-w-full table-auto border-collapse border border-gray-700">
-      <thead>
-        <tr class="bg-gray-800 text-gray-300">
-          <th class="border border-gray-600 px-4 py-2">UserID</th>
-          <th class="border border-gray-600 px-4 py-2">Benutzername</th>
-          <th class="border border-gray-600 px-4 py-2">Passwort</th>
-          <th class="border border-gray-600 px-4 py-2">Letzter Login</th>
-          <th class="border border-gray-600 px-4 py-2">Online</th>
-          <th class="border border-gray-600 px-4 py-2">Aktionen</th>
-        </tr>
-      </thead>
-      <tbody id="usersBody" class="text-center"></tbody>
-    </table>
+    <div id="notAdminMsg" class="text-center text-red-500 font-semibold text-xl hidden">
+      Du hast keine Berechtigung, diese Seite zu sehen.
+    </div>
 
-    <p id="noUsersMsg" class="mt-6 text-center text-gray-400 hidden">Keine Benutzer gefunden.</p>
+    <div id="mainContent" class="hidden">
 
-    <button id="showAddFormBtn" class="mt-6 bg-green-600 hover:bg-green-700 px-4 py-2 rounded">
-      ➕ Neuen Benutzer hinzufügen
-    </button>
+      <table class="min-w-full table-auto border-collapse border border-gray-700">
+        <thead>
+          <tr class="bg-gray-800 text-gray-300">
+            <th class="border border-gray-600 px-4 py-2">UserID</th>
+            <th class="border border-gray-600 px-4 py-2">Benutzername</th>
+            <th class="border border-gray-600 px-4 py-2">Passwort</th>
+            <th class="border border-gray-600 px-4 py-2">Letzter Login</th>
+            <th class="border border-gray-600 px-4 py-2">Online</th>
+            <th class="border border-gray-600 px-4 py-2">Admin</th>
+            <th class="border border-gray-600 px-4 py-2">Kann annehmen</th>
+            <th class="border border-gray-600 px-4 py-2">Kann löschen</th>
+            <th class="border border-gray-600 px-4 py-2">Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody" class="text-center"></tbody>
+      </table>
 
-    <form id="addUserForm" class="mt-6 bg-gray-800 p-4 rounded hidden max-w-md mx-auto">
-      <h2 class="text-xl font-semibold mb-4">Neuen Benutzer anlegen</h2>
-      <label class="block mb-2">
-        Benutzername:
-        <input type="text" id="newUsername" class="mt-1 p-2 w-full rounded text-black" required />
-      </label>
-      <label class="block mb-2">
-        Passwort:
-        <input type="text" id="newPassword" class="mt-1 p-2 w-full rounded text-black" required />
-      </label>
-      <label class="block mb-4">
-        Online:
-        <input type="checkbox" id="newOnline" class="ml-2" />
-      </label>
-      <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white">Benutzer speichern</button>
-      <button type="button" id="cancelAddUser" class="ml-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white">Abbrechen</button>
-    </form>
+      <p id="noUsersMsg" class="mt-6 text-center text-gray-400 hidden">Keine Benutzer gefunden.</p>
+
+      <button id="showAddFormBtn" class="mt-6 bg-green-600 hover:bg-green-700 px-4 py-2 rounded">
+        ➕ Neuen Benutzer hinzufügen
+      </button>
+
+      <form id="addUserForm" class="mt-6 bg-gray-800 p-4 rounded hidden max-w-md mx-auto">
+        <h2 class="text-xl font-semibold mb-4">Neuen Benutzer anlegen</h2>
+        <label class="block mb-2">
+          Benutzername:
+          <input type="text" id="newUsername" class="mt-1 p-2 w-full rounded text-black" required />
+        </label>
+        <label class="block mb-2">
+          Passwort:
+          <input type="text" id="newPassword" class="mt-1 p-2 w-full rounded text-black" required />
+        </label>
+        <label class="block mb-2">
+          Online:
+          <input type="checkbox" id="newOnline" class="ml-2" />
+        </label>
+        <label class="block mb-2">
+          Admin:
+          <input type="checkbox" id="newIsAdmin" class="ml-2" />
+        </label>
+        <label class="block mb-2">
+          Kann annehmen:
+          <input type="checkbox" id="newCanAccept" class="ml-2" />
+        </label>
+        <label class="block mb-4">
+          Kann löschen:
+          <input type="checkbox" id="newCanDelete" class="ml-2" />
+        </label>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white">Benutzer speichern</button>
+        <button type="button" id="cancelAddUser" class="ml-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white">Abbrechen</button>
+      </form>
+    </div>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
-      authDomain: "herder-7dd17.firebaseapp.com",
-      projectId: "herder-7dd17",
-      storageBucket: "herder-7dd17.firebasestorage.app",
-      messagingSenderId: "472463332211",
-      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
-      measurementId: "G-HR07N6LXGN"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+    authDomain: "herder-7dd17.firebaseapp.com",
+    projectId: "herder-7dd17",
+    storageBucket: "herder-7dd17.firebasestorage.app",
+    messagingSenderId: "472463332211",
+    appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+    measurementId: "G-HR07N6LXGN"
+  };
 
-    const usersBody = document.getElementById("usersBody");
-    const noUsersMsg = document.getElementById("noUsersMsg");
-    const showAddFormBtn = document.getElementById("showAddFormBtn");
-    const addUserForm = document.getElementById("addUserForm");
-    const cancelAddUser = document.getElementById("cancelAddUser");
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
 
-    showAddFormBtn.onclick = () => {
-      addUserForm.classList.remove("hidden");
-      showAddFormBtn.classList.add("hidden");
-    };
+  const usersBody = document.getElementById("usersBody");
+  const noUsersMsg = document.getElementById("noUsersMsg");
+  const showAddFormBtn = document.getElementById("showAddFormBtn");
+  const addUserForm = document.getElementById("addUserForm");
+  const cancelAddUser = document.getElementById("cancelAddUser");
+  const mainContent = document.getElementById("mainContent");
+  const notAdminMsg = document.getElementById("notAdminMsg");
 
-    cancelAddUser.onclick = () => {
-      addUserForm.reset();
-      addUserForm.classList.add("hidden");
-      showAddFormBtn.classList.remove("hidden");
-    };
+  // Benutzerformular anzeigen
+  showAddFormBtn.onclick = () => {
+    addUserForm.classList.remove("hidden");
+    showAddFormBtn.classList.add("hidden");
+  };
 
-    async function loadUsers() {
-      usersBody.innerHTML = "";
-      noUsersMsg.classList.add("hidden");
+  // Benutzerformular abbrechen
+  cancelAddUser.onclick = () => {
+    addUserForm.reset();
+    addUserForm.classList.add("hidden");
+    showAddFormBtn.classList.remove("hidden");
+  };
 
-      try {
-        const snapshot = await db.collection("users").get();
-
-        if (snapshot.empty) {
-          noUsersMsg.classList.remove("hidden");
-          return;
-        }
-
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const tr = document.createElement("tr");
-          tr.className = "odd:bg-gray-800 even:bg-gray-700";
-
-          const lastLogin = data.lastLogin ? new Date(data.lastLogin.seconds * 1000).toLocaleString() : "-";
-          const online = data.online ? true : false;
-
-          tr.innerHTML = `
-            <td class="border border-gray-600 px-4 py-2">${doc.id}</td>
-            <td class="border border-gray-600 px-4 py-2">
-              <input type="text" class="w-full bg-gray-700 text-white p-1 rounded" value="${data.username || ''}" />
-            </td>
-            <td class="border border-gray-600 px-4 py-2">
-              <input type="text" class="w-full bg-gray-700 text-white p-1 rounded" value="${data.passwort || ''}" />
-            </td>
-            <td class="border border-gray-600 px-4 py-2">${lastLogin}</td>
-            <td class="border border-gray-600 px-4 py-2">
-              <input type="checkbox" ${online ? "checked" : ""} />
-            </td>
-            <td class="border border-gray-600 px-4 py-2">
-              <button class="saveBtn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-white">Speichern</button>
-              <button class="deleteBtn bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-white ml-2">Löschen</button>
-            </td>
-          `;
-
-          // Save Button Event
-          tr.querySelector(".saveBtn").addEventListener("click", async () => {
-            const inputs = tr.querySelectorAll("input");
-            const newUsername = inputs[0].value.trim();
-            const newPassword = inputs[1].value.trim();
-            const newOnline = inputs[2].checked;
-
-            if (!newUsername || !newPassword) {
-              alert("Benutzername und Passwort dürfen nicht leer sein!");
-              return;
-            }
-
-            try {
-              await db.collection("users").doc(doc.id).update({
-                username: newUsername,
-                passwort: newPassword,
-                online: newOnline,
-                lastChange: firebase.firestore.FieldValue.serverTimestamp()
-              });
-              alert("Benutzer aktualisiert!");
-              loadUsers();
-            } catch (e) {
-              alert("Fehler beim Aktualisieren: " + e.message);
-            }
-          });
-
-          // Delete Button Event
-          tr.querySelector(".deleteBtn").addEventListener("click", async () => {
-            if (confirm(`Benutzer "${doc.id}" wirklich löschen?`)) {
-              try {
-                await db.collection("users").doc(doc.id).delete();
-                alert("Benutzer gelöscht!");
-                loadUsers();
-              } catch (e) {
-                alert("Fehler beim Löschen: " + e.message);
-              }
-            }
-          });
-
-          usersBody.appendChild(tr);
-        });
-      } catch (error) {
-        console.error("Fehler beim Laden der Benutzer:", error);
-        noUsersMsg.textContent = "Fehler beim Laden der Benutzer. Siehe Konsole.";
-        noUsersMsg.classList.remove("hidden");
-      }
+  // Prüfen ob aktueller User Admin ist
+  async function isCurrentUserAdmin() {
+    const user = auth.currentUser;
+    if (!user) return false;
+    try {
+      const userDoc = await db.collection("users").doc(user.uid).get();
+      const data = userDoc.data();
+      return data?.permissions?.isAdmin === true;
+    } catch (e) {
+      console.error("Fehler beim Laden des Nutzer-Dokuments:", e);
+      return false;
     }
+  }
 
-    addUserForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const username = document.getElementById("newUsername").value.trim();
-      const password = document.getElementById("newPassword").value.trim();
-      const online = document.getElementById("newOnline").checked;
+  // Lade alle Benutzer (nur für Admins)
+  async function loadUsers() {
+    usersBody.innerHTML = "";
+    noUsersMsg.classList.add("hidden");
 
-      if (!username || !password) {
-        alert("Benutzername und Passwort dürfen nicht leer sein!");
+    try {
+      const snapshot = await db.collection("users").get();
+
+      if (snapshot.empty) {
+        noUsersMsg.classList.remove("hidden");
         return;
       }
 
-      try {
-        await db.collection("users").add({
-          username: username,
-          passwort: password,
-          online: online,
-          lastLogin: null,
-          lastChange: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        alert("Neuer Benutzer hinzugefügt!");
-        addUserForm.reset();
-        addUserForm.classList.add("hidden");
-        showAddFormBtn.classList.remove("hidden");
-        loadUsers();
-      } catch (e) {
-        alert("Fehler beim Hinzufügen: " + e.message);
-      }
-    });
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const tr = document.createElement("tr");
+        tr.className = "odd:bg-gray-800 even:bg-gray-700";
 
-    loadUsers();
-  </script>
-</body>
-</html>
+        const lastLogin = data.lastLogin ? new Date(data.lastLogin.seconds * 1000).toLocaleString() : "-";
+        const online = data.online === true;
+
+        const permissions = data.permissions || {};
+        const isAdmin = permissions.isAdmin === true;
+        const canAccept = permissions.canAccept === true;
+        const canDelete = permissions.canDelete === true;
+
+        tr.innerHTML = `
+          <td class="border border-gray-600 px-4 py-2">${doc.id}</td>
+          <td class="border border-gray-600 px-4 py-2">
+            <input type="text" class="w-full bg-gray-700 text-white p-1 rounded usernameInput" value="${data.username || ''}" />
+          </td>
+          <td class="border border-gray-600 px-4 py-2">
+            <input type="text" class="w-full bg-gray-700 text-white p-1 rounded passwordInput" value="${data.passwort || ''}" />
+          </td>
+          <td class="border border-gray-600 px-4 py-2">${lastLogin}</td>
+          <td class="border border-gray-600 px-4 py-2">
+            <input type="checkbox" class="onlineInput" ${online ? "checked" : ""} />
+          </td>
+          <td class="border border-gray-600 px-4 py-2 text-center">
+            <input type="checkbox" class="permAdmin" title="Admin" ${isAdmin ? "checked" : ""} />
+          </td>
+          <td class="border border-gray-600 px-4 py-2 text-center">
+            <input type="checkbox" class="permAccept" title="Kann annehmen" ${canAccept ? "checked" : ""} />
+          </td>
+          <td class="border border-gray-600 px-4 py-2 text-center">
+            <input type="checkbox" class="permDelete" title="Kann löschen" ${canDelete ? "checked" : ""} />
+          </td>
+          <td class="border border-gray-600 px-4 py-2">
+            <button class="saveBtn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-white">Speichern</button>
+            <button class="deleteBtn bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-white ml-2">Löschen</button>
+          </td>
+        `;
+
+        // Save Button Event
+        tr.querySelector(".saveBtn").addEventListener("click", async () => {
+          const usernameInput = tr.querySelector(".usernameInput");
+          const passwordInput = tr.querySelector(".passwordInput");
+          const onlineInput = tr.querySelector(".onlineInput");
+          const permAdmin = tr.querySelector(".permAdmin");
+          const permAccept = tr.querySelector(".permAccept");
+          const permDelete = tr.querySelector(".permDelete");
+
+          const newUsername = usernameInput.value.trim();
+          const newPassword = passwordInput.value.trim();
+          const newOnline = onlineInput.checked;
+          const newIsAdmin = permAdmin.checked;
+          const newCanAccept = permAccept.checked;
+          const newCanDelete = permDelete.checked;
+
+          if (!newUsername || !newPassword) {
+            alert("Benutzername und Passwort dürfen nicht leer sein!");
+            return;
+          }
+
+          try {
+            await db.collection("users").doc
