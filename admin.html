@@ -2,11 +2,37 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Herdernacht Songwünsche - Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Herdernacht Wünsche</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+  <div id="loginView" class="flex flex-col items-center justify-center min-h-screen space-y-4">
+    <h2 class="text-xl font-bold">🔒 Admin Login</h2>
+    <input id="adminPassword" type="password" placeholder="Admin-Passwort" class="p-2 rounded text-black" />
+    <button onclick="checkLogin()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Login</button>
+    <button onclick="location.href='index.html'" class="text-sm mt-4 text-gray-400 hover:text-gray-200">⬅ Zur Startseite</button>
+  </div>
+
+  <div id="adminView" class="hidden">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">🎛️ Admin-Bereich</h1>
+      <button onclick="location.href='index.html'" class="text-sm text-gray-400 hover:text-gray-200">⬅ Zur Startseite</button>
+    </div>
+
+    <div>
+      <h2 class="text-xl mb-2 font-semibold">🆕 Offene Wünsche</h2>
+      <div id="openWishes" class="space-y-4"></div>
+    </div>
+
+    <div class="mt-8">
+      <h2 class="text-xl mb-2 font-semibold">📦 Bearbeitete Wünsche</h2>
+      <div id="processedWishes" class="space-y-4"></div>
+    </div>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
@@ -20,415 +46,110 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Admin-Passwort hier anpassen:
-    const ADMIN_PASSWORD = "herder2025"; // <- bitte anpassen
+    const admin = "herdernacht2025"; // Ändere bei Bedarf
 
-    // Ablehn-Gründe zur Auswahl
-    const REJECT_REASONS = [
-      "Unangemessen",
-      "Passt nicht zur Playlist",
-      "Zu laut",
-      "Zu viel Bass",
-      "Sonstiges"
-    ];
-  </script>
-</head>
-<body class="bg-gray-900 text-white min-h-screen p-6 flex flex-col items-center">
-
-  <!-- LOGIN -->
-  <div id="loginContainer" class="max-w-md w-full bg-gray-800 p-6 rounded shadow-lg">
-    <h2 class="text-2xl font-bold mb-4 text-center">Admin Login</h2>
-    <form id="loginForm" class="space-y-4">
-      <input type="password" id="password" placeholder="Admin Passwort" required autocomplete="off" class="w-full p-2 rounded text-black" />
-      <button type="submit" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full">Anmelden</button>
-    </form>
-    <p id="loginError" class="text-red-500 mt-2 text-center"></p>
-  </div>
-
-  <!-- ADMIN-BEREICH -->
-  <div id="adminContent" class="hidden w-full max-w-6xl flex flex-col space-y-6">
-
-    <div class="flex justify-between items-center">
-      <h1 class="text-3xl font-bold mb-2">🎵 Adminbereich</h1>
-      <button id="logoutBtn" class="bg-red-600 px-4 py-2 rounded hover:bg-red-700">Logout</button>
-    </div>
-
-    <!-- Filter -->
-    <div class="bg-gray-800 p-4 rounded flex flex-wrap gap-4 items-center">
-      <label>
-        Sortieren nach:
-        <select id="sortSelect" class="ml-2 rounded p-1 bg-gray-700 text-white">
-          <option value="timestamp_desc">Neueste zuerst</option>
-          <option value="timestamp_asc">Älteste zuerst</option>
-          <option value="title_asc">Songtitel A-Z</option>
-          <option value="title_desc">Songtitel Z-A</option>
-          <option value="artist_asc">Interpret A-Z</option>
-          <option value="artist_desc">Interpret Z-A</option>
-          <option value="link_yes">Hat Link</option>
-          <option value="link_no">Kein Link</option>
-        </select>
-      </label>
-      <label>
-        Filter Status:
-        <select id="statusFilter" class="ml-2 rounded p-1 bg-gray-700 text-white">
-          <option value="offen">Neue Wünsche</option>
-          <option value="bearbeitet">Bearbeitete Wünsche</option>
-          <option value="alle" selected>Alle</option>
-        </select>
-      </label>
-    </div>
-
-    <!-- Neue Wünsche Tabelle -->
-    <div>
-      <h2 class="text-xl font-semibold mb-2">Neue Wünsche (Status: offen)</h2>
-      <table class="min-w-full table-auto border-collapse border border-gray-600">
-        <thead>
-          <tr class="bg-gray-700 text-left">
-            <th class="border border-gray-600 p-2">Songtitel</th>
-            <th class="border border-gray-600 p-2">Interpret</th>
-            <th class="border border-gray-600 p-2">Link</th>
-            <th class="border border-gray-600 p-2">Kommentar</th>
-            <th class="border border-gray-600 p-2">Status ändern</th>
-            <th class="border border-gray-600 p-2">Löschen</th>
-          </tr>
-        </thead>
-        <tbody id="offenTbody"></tbody>
-      </table>
-    </div>
-
-    <!-- Bearbeitete Wünsche Tabelle -->
-    <div>
-      <h2 class="text-xl font-semibold mb-2">Bearbeitete Wünsche (Status: angenommen / abgelehnt / gespielt)</h2>
-      <table class="min-w-full table-auto border-collapse border border-gray-600">
-        <thead>
-          <tr class="bg-gray-700 text-left">
-            <th class="border border-gray-600 p-2">Songtitel</th>
-            <th class="border border-gray-600 p-2">Interpret</th>
-            <th class="border border-gray-600 p-2">Link</th>
-            <th class="border border-gray-600 p-2">Kommentar</th>
-            <th class="border border-gray-600 p-2">Status</th>
-            <th class="border border-gray-600 p-2">Ablehn-Grund</th>
-            <th class="border border-gray-600 p-2">Aktionen</th>
-          </tr>
-        </thead>
-        <tbody id="bearbeitetTbody"></tbody>
-      </table>
-    </div>
-
-  </div>
-
-  <script>
-    const loginContainer = document.getElementById("loginContainer");
-    const adminContent = document.getElementById("adminContent");
-    const loginForm = document.getElementById("loginForm");
-    const loginError = document.getElementById("loginError");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const offenTbody = document.getElementById("offenTbody");
-    const bearbeitetTbody = document.getElementById("bearbeitetTbody");
-    const sortSelect = document.getElementById("sortSelect");
-    const statusFilter = document.getElementById("statusFilter");
-
-    // Einfacher Loginstatus mit SessionStorage
-    function isLoggedIn() {
-      return sessionStorage.getItem("adminLoggedIn") === "true";
-    }
-    function setLoggedIn(status) {
-      sessionStorage.setItem("adminLoggedIn", status ? "true" : "false");
-    }
-
-    // Wünsche zwischenspeichern
-    let wuensche = [];
-
-    // Filter & Sort Funktion
-    function filterAndSort() {
-      let filtered = wuensche;
-
-      // Filter Status
-      const statusVal = statusFilter.value;
-      if(statusVal === "offen"){
-        filtered = filtered.filter(w => w.status === "offen");
-      } else if(statusVal === "bearbeitet"){
-        filtered = filtered.filter(w => ["angenommen","abgelehnt","gespielt"].includes(w.status));
-      }
-
-      // Sortieren
-      switch(sortSelect.value){
-        case "timestamp_desc":
-          filtered.sort((a,b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
-          break;
-        case "timestamp_asc":
-          filtered.sort((a,b) => a.timestamp?.toMillis() - b.timestamp?.toMillis());
-          break;
-        case "title_asc":
-          filtered.sort((a,b) => a.title.localeCompare(b.title));
-          break;
-        case "title_desc":
-          filtered.sort((a,b) => b.title.localeCompare(a.title));
-          break;
-        case "artist_asc":
-          filtered.sort((a,b) => a.artist.localeCompare(b.artist));
-          break;
-        case "artist_desc":
-          filtered.sort((a,b) => b.artist.localeCompare(a.artist));
-          break;
-        case "link_yes":
-          filtered = filtered.filter(w => w.link && w.link.trim() !== "");
-          break;
-        case "link_no":
-          filtered = filtered.filter(w => !w.link || w.link.trim() === "");
-          break;
-      }
-
-      return filtered;
-    }
-
-    // Anzeige leeren
-    function clearTables(){
-      offenTbody.innerHTML = "";
-      bearbeitetTbody.innerHTML = "";
-    }
-
-    // Ablehnen-Dialog
-    function showRejectReasonPrompt(currentReason){
-      return new Promise(resolve => {
-        const reason = prompt("Ablehn-Grund eingeben (optional):", currentReason || "");
-        resolve(reason);
-      });
-    }
-
-    // Status ändern
-    async function changeStatus(docId, newStatus, oldStatus, currentRejectReason) {
-      if(newStatus === oldStatus) return;
-
-      if(newStatus === "abgelehnt"){
-        // Grund abfragen
-        const reason = await showRejectReasonPrompt(currentRejectReason);
-        await db.collection("wuensche").doc(docId).update({
-          status: newStatus,
-          rejectReason: reason || ""
-        });
+    function checkLogin() {
+      const entered = document.getElementById("adminword").value;
+      if (entered === admin) {
+        document.getElementById("loginView").classList.add("hidden");
+        document.getElementById("adminView").classList.remove("hidden");
+        loadWishes();
       } else {
-        // Status ändern, Grund entfernen wenn nicht abgelehnt
-        await db.collection("wuensche").doc(docId).update({
-          status: newStatus,
-          rejectReason: ""
-        });
+        alert("Falsches wort");
       }
     }
 
-    // Löschen
-    async function deleteWunsch(docId){
-      if(confirm("Wirklich löschen?")){
-        await db.collection("wuensche").doc(docId).delete();
-      }
-    }
+    async function loadWishes() {
+      const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
+      const openDiv = document.getElementById("openWishes");
+      const processedDiv = document.getElementById("processedWishes");
+      openDiv.innerHTML = "";
+      processedDiv.innerHTML = "";
 
-    // Zeige alle Wünsche in Tabellen
-    function renderAll() {
-      clearTables();
+      snapshot.forEach(doc => {
+        const wish = doc.data();
+        const div = document.createElement("div");
+        div.className = "bg-gray-800 p-4 rounded shadow";
 
-      const filtered = filterAndSort();
+        const info = `
+          <p><strong>${wish.title}</strong> von <em>${wish.artist}</em></p>
+          ${wish.link ? `<p>🔗 <a href="${wish.link}" class="text-blue-400" target="_blank">Link</a></p>` : ""}
+          ${wish.comment ? `<p>💬 ${wish.comment}</p>` : ""}
+          <p>👍 ${wish.upvotes || 0} | 👎 ${wish.downvotes || 0}</p>
+          ${wish.status === "abgelehnt" && wish.ablehnungsgrund ? `<p class="text-red-400">❌ Grund: ${wish.ablehnungsgrund}</p>` : ""}
+        `;
 
-      filtered.forEach(wunsch => {
-        const tr = document.createElement("tr");
-        tr.className = "border border-gray-600";
+        div.innerHTML = info;
 
-        // Hilfsfunktion für Link-Cell
-        const createLinkCell = (link) => {
-          const td = document.createElement("td");
-          td.className = "border border-gray-600 p-2";
-          if(link && link.trim() !== ""){
-            const a = document.createElement("a");
-            a.href = link;
-            a.target = "_blank";
-            a.rel = "noopener";
-            a.className = "text-blue-400 hover:underline";
-            a.textContent = "Link";
-            td.appendChild(a);
-          } else {
-            td.textContent = "-";
-          }
-          return td;
-        };
+        if (wish.status === "offen") {
+          const select = document.createElement("select");
+          select.className = "mt-2 p-2 text-black rounded";
+          select.innerHTML = `
+            <option value="">Aktion wählen</option>
+            <option value="angenommen">✅ Annehmen</option>
+            <option value="abgelehnt">❌ Ablehnen</option>
+            <option value="geloescht">🗑️ Löschen</option>
+          `;
+          const reasonSelect = document.createElement("select");
+          reasonSelect.className = "mt-2 p-2 text-black rounded hidden";
+          reasonSelect.innerHTML = `
+            <option value="">Grund wählen</option>
+            <option value="Unangemessen">Unangemessen</option>
+            <option value="t nicht zur Playlist">t nicht zur Playlist</option>
+            <option value="Zu laut">Zu laut</option>
+            <option value="Zu viel Bass">Zu viel Bass</option>
+          `;
 
-        // Hilfsfunktion für Kommentar-Cell
-        const createCommentCell = (comment) => {
-          const td = document.createElement("td");
-          td.className = "border border-gray-600 p-2 italic text-gray-300";
-          td.textContent = comment || "-";
-          return td;
-        };
-
-        // Bei neuen Wünschen (offen)
-        if(wunsch.status === "offen"){
-          // Titel
-          const tdTitle = document.createElement("td");
-          tdTitle.className = "border border-gray-600 p-2";
-          tdTitle.textContent = wunsch.title;
-          tr.appendChild(tdTitle);
-
-          // Interpret
-          const tdArtist = document.createElement("td");
-          tdArtist.className = "border border-gray-600 p-2";
-          tdArtist.textContent = wunsch.artist;
-          tr.appendChild(tdArtist);
-
-          // Link
-          tr.appendChild(createLinkCell(wunsch.link));
-
-          // Kommentar
-          tr.appendChild(createCommentCell(wunsch.comment));
-
-          // Status ändern (Dropdown)
-          const tdStatus = document.createElement("td");
-          tdStatus.className = "border border-gray-600 p-2";
-
-          const selectStatus = document.createElement("select");
-          selectStatus.className = "bg-gray-700 text-white rounded p-1 w-full";
-          ["offen","angenommen","abgelehnt","gespielt"].forEach(statusOpt => {
-            const option = document.createElement("option");
-            option.value = statusOpt;
-            option.textContent = statusOpt.charAt(0).toUpperCase() + statusOpt.slice(1);
-            if(statusOpt === wunsch.status) option.selected = true;
-            selectStatus.appendChild(option);
+          select.addEventListener("change", async () => {
+            if (select.value === "angenommen") {
+              await db.collection("wuensche").doc(doc.id).update({ status: "angenommen" });
+              loadWishes();
+            } else if (select.value === "abgelehnt") {
+              reasonSelect.classList.remove("hidden");
+            } else if (select.value === "geloescht") {
+              await db.collection("wuensche").doc(doc.id).delete();
+              loadWishes();
+            }
           });
 
-          selectStatus.onchange = () => {
-            changeStatus(wunsch.id, selectStatus.value, wunsch.status, wunsch.rejectReason).catch(console.error);
-          };
+          reasonSelect.addEventListener("change", async () => {
+            if (reasonSelect.value) {
+              await db.collection("wuensche").doc(doc.id).update({
+                status: "abgelehnt",
+                ablehnungsgrund: reasonSelect.value
+              });
+              loadWishes();
+            }
+          });
 
-          tdStatus.appendChild(selectStatus);
-          tr.appendChild(tdStatus);
-
-          // Löschen Button
-          const tdDelete = document.createElement("td");
-          tdDelete.className = "border border-gray-600 p-2 text-center";
-          const btnDelete = document.createElement("button");
-          btnDelete.className = "bg-red-600 px-3 py-1 rounded hover:bg-red-700";
-          btnDelete.textContent = "Löschen";
-          btnDelete.onclick = () => deleteWunsch(wunsch.id).catch(console.error);
-          tdDelete.appendChild(btnDelete);
-          tr.appendChild(tdDelete);
-
-          offenTbody.appendChild(tr);
-
+          div.appendChild(select);
+          div.appendChild(reasonSelect);
+          openDiv.appendChild(div);
         } else {
-          // Bearbeitete Wünsche
-
-          // Titel
-          const tdTitle = document.createElement("td");
-          tdTitle.className = "border border-gray-600 p-2";
-          tdTitle.textContent = wunsch.title;
-          tr.appendChild(tdTitle);
-
-          // Interpret
-          const tdArtist = document.createElement("td");
-          tdArtist.className = "border border-gray-600 p-2";
-          tdArtist.textContent = wunsch.artist;
-          tr.appendChild(tdArtist);
-
-          // Link
-          tr.appendChild(createLinkCell(wunsch.link));
-
-          // Kommentar
-          tr.appendChild(createCommentCell(wunsch.comment));
-
-          // Status
-          const tdStatus = document.createElement("td");
-          tdStatus.className = "border border-gray-600 p-2 font-semibold";
-          tdStatus.textContent = wunsch.status.charAt(0).toUpperCase() + wunsch.status.slice(1);
-          tr.appendChild(tdStatus);
-
-          // Ablehn-Grund
-          const tdReject = document.createElement("td");
-          tdReject.className = "border border-gray-600 p-2 italic text-red-500";
-          tdReject.textContent = wunsch.status === "abgelehnt" ? (wunsch.rejectReason || "-") : "-";
-          tr.appendChild(tdReject);
-
-          // Aktionen
-          const tdActions = document.createElement("td");
-          tdActions.className = "border border-gray-600 p-2 space-x-2";
-
-          // Status ändern (Dropdown)
-          const selectStatus = document.createElement("select");
-          selectStatus.className = "bg-gray-700 text-white rounded p-1";
-          ["offen","angenommen","abgelehnt","gespielt"].forEach(statusOpt => {
-            const option = document.createElement("option");
-            option.value = statusOpt;
-            option.textContent = statusOpt.charAt(0).toUpperCase() + statusOpt.slice(1);
-            if(statusOpt === wunsch.status) option.selected = true;
-            selectStatus.appendChild(option);
+          const processedSelect = document.createElement("select");
+          processedSelect.className = "mt-2 p-2 text-black rounded";
+          processedSelect.innerHTML = `
+            <option value="">Status ändern</option>
+            <option value="offen">🕒 Wieder offen</option>
+            <option value="gespielt">✅ Gespielt</option>
+            <option value="geloescht">🗑️ Löschen</option>
+          `;
+          processedSelect.addEventListener("change", async () => {
+            if (processedSelect.value === "geloescht") {
+              await db.collection("wuensche").doc(doc.id).delete();
+            } else {
+              await db.collection("wuensche").doc(doc.id).update({
+                status: processedSelect.value
+              });
+            }
+            loadWishes();
           });
-          selectStatus.onchange = () => {
-            changeStatus(wunsch.id, selectStatus.value, wunsch.status, wunsch.rejectReason).catch(console.error);
-          };
-          tdActions.appendChild(selectStatus);
 
-          // Löschen Button
-          const btnDelete = document.createElement("button");
-          btnDelete.className = "bg-red-600 px-3 py-1 rounded hover:bg-red-700";
-          btnDelete.textContent = "Löschen";
-          btnDelete.onclick = () => deleteWunsch(wunsch.id).catch(console.error);
-          tdActions.appendChild(btnDelete);
-
-          tr.appendChild(tdActions);
-
-          bearbeitetTbody.appendChild(tr);
+          div.appendChild(processedSelect);
+          processedDiv.appendChild(div);
         }
       });
     }
-
-    // Wünsche aus Firestore laden
-    function loadWuensche() {
-      db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-        wuensche = snapshot.docs.map(doc => {
-          return {
-            id: doc.id,
-            ...doc.data()
-          };
-        });
-        renderAll();
-      });
-    }
-
-    // Login-Handling
-    loginForm.addEventListener("submit", e => {
-      e.preventDefault();
-      loginError.textContent = "";
-      const pw = document.getElementById("password").value;
-      if(pw === ADMIN_PASSWORD){
-        setLoggedIn(true);
-        showAppropriateView();
-        loginForm.reset();
-        loadWuensche();
-      } else {
-        loginError.textContent = "Falsches Passwort!";
-      }
-    });
-
-    logoutBtn.addEventListener("click", () => {
-      setLoggedIn(false);
-      showAppropriateView();
-    });
-
-    // Filter & Sort Events
-    sortSelect.addEventListener("change", renderAll);
-    statusFilter.addEventListener("change", renderAll);
-
-    // Sichtbarkeit steuern
-    function showAppropriateView(){
-      if(isLoggedIn()){
-        loginContainer.classList.add("hidden");
-        adminContent.classList.remove("hidden");
-      } else {
-        loginContainer.classList.remove("hidden");
-        adminContent.classList.add("hidden");
-      }
-    }
-
-    // Beim Laden prüfen
-    showAppropriateView();
   </script>
-
 </body>
 </html>
