@@ -40,103 +40,110 @@
 
 
   <script>
-    const wunschListe = document.getElementById("wunschListe");
+  const wunschListe = document.getElementById("wunschListe");
 
-    function renderWunsch(doc) {
-      const data = doc.data();
-      const div = document.createElement("div");
-      div.className = "bg-gray-800 p-4 rounded shadow";
+  function renderWunsch(doc) {
+    const data = doc.data();
+    const div = document.createElement("div");
+    div.className = "bg-gray-800 p-4 rounded shadow";
 
-      const title = document.createElement("h2");
-      title.className = "text-xl font-semibold";
-      title.textContent = data.title + " — " + data.artist;
-      div.appendChild(title);
+    const title = document.createElement("h2");
+    title.className = "text-xl font-semibold";
+    title.textContent = data.title + " — " + data.artist;
+    div.appendChild(title);
 
-      if (data.link) {
-        const link = document.createElement("a");
-        link.href = data.link;
-        link.target = "_blank";
-        link.rel = "noopener";
-        link.className = "text-blue-400 hover:underline";
-        link.textContent = "Link anhören";
-        div.appendChild(link);
-      }
+    if (data.link) {
+      const link = document.createElement("a");
+      link.href = data.link;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.className = "text-blue-400 hover:underline";
+      link.textContent = "Link anhören";
+      div.appendChild(link);
+    }
 
-      if(data.comment){
-        const comment = document.createElement("p");
-        comment.className = "mt-2 italic text-gray-300";
-        comment.textContent = "Kommentar: " + data.comment;
-        div.appendChild(comment);
-      }
+    if (data.comment) {
+      const comment = document.createElement("p");
+      comment.className = "mt-2 italic text-gray-300";
+      comment.textContent = "Kommentar: " + data.comment;
+      div.appendChild(comment);
+    }
 
-      const status = document.createElement("p");
-      status.className = "mt-2 font-semibold";
+    const status = document.createElement("p");
+    status.className = "mt-2 font-semibold";
 
-      let statusText = "Status: " + data.status.charAt(0).toUpperCase() + data.status.slice(1);
+    let statusText = "Status: " + data.status.charAt(0).toUpperCase() + data.status.slice(1);
 
-      if(data.status === "abgelehnt" && data.reason){
-        statusText = "Status: Abgelehnt: " + data.reason;
-        status.className += " text-red-400";
-      } else if(data.status === "gespielt"){
-        statusText += " ✅";
-      }
+    if (data.status === "abgelehnt" && data.reason) {
+      statusText = "Status: Abgelehnt: " + data.reason;
+      status.className += " text-red-400";
+    } else if (data.status === "gespielt") {
+      statusText += " ✅";
+    }
 
-      status.textContent = statusText;
-      div.appendChild(status);
+    status.textContent = statusText;
+    div.appendChild(status);
 
-      const votingDiv = document.createElement("div");
-votingDiv.className = "mt-3 flex items-center space-x-4";
+    const votingDiv = document.createElement("div");
+    votingDiv.className = "mt-3 flex items-center space-x-4";
 
-const upvoteBtn = document.createElement("button");
-const downvoteBtn = document.createElement("button");
+    const upvoteBtn = document.createElement("button");
+    const downvoteBtn = document.createElement("button");
 
-const voteKey = `vote_${doc.id}`; // z. B. vote_abc123
+    const voteKey = `vote_${doc.id}`;
+    const alreadyVoted = localStorage.getItem(voteKey);
 
-const alreadyVoted = localStorage.getItem(voteKey);
+    upvoteBtn.textContent = `👍 (${data.upvotes || 0})`;
+    upvoteBtn.className = "bg-green-600 px-3 py-1 rounded hover:bg-green-700";
+    upvoteBtn.disabled = alreadyVoted !== null;
+    if (upvoteBtn.disabled) upvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
 
-upvoteBtn.textContent = `👍 (${data.upvotes || 0})`;
-upvoteBtn.className = "bg-green-600 px-3 py-1 rounded hover:bg-green-700";
-upvoteBtn.disabled = alreadyVoted !== null;
-if (upvoteBtn.disabled) upvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
+    upvoteBtn.onclick = async () => {
+      if (localStorage.getItem(voteKey)) return;
+      const newUp = (data.upvotes || 0) + 1;
+      await db.collection("wuensche").doc(doc.id).update({ upvotes: newUp });
+      localStorage.setItem(voteKey, "up");
+      upvoteBtn.textContent = `👍 (${newUp})`;
+      upvoteBtn.disabled = true;
+      upvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
+    };
 
-upvoteBtn.onclick = async () => {
-  if (localStorage.getItem(voteKey)) return;
-  const newUp = (data.upvotes || 0) + 1;
-  await db.collection("wuensche").doc(doc.id).update({ upvotes: newUp });
-  localStorage.setItem(voteKey, "up");
-  upvoteBtn.textContent = `👍 (${newUp})`;
-  upvoteBtn.disabled = true;
-  upvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
-};
+    downvoteBtn.textContent = `👎 (${data.downvotes || 0})`;
+    downvoteBtn.className = "bg-red-600 px-3 py-1 rounded hover:bg-red-700";
+    downvoteBtn.disabled = alreadyVoted !== null;
+    if (downvoteBtn.disabled) downvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
 
-downvoteBtn.textContent = `👎 (${data.downvotes || 0})`;
-downvoteBtn.className = "bg-red-600 px-3 py-1 rounded hover:bg-red-700";
-downvoteBtn.disabled = alreadyVoted !== null;
-if (downvoteBtn.disabled) downvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
+    downvoteBtn.onclick = async () => {
+      if (localStorage.getItem(voteKey)) return;
+      const newDown = (data.downvotes || 0) + 1;
+      await db.collection("wuensche").doc(doc.id).update({ downvotes: newDown });
+      localStorage.setItem(voteKey, "down");
+      downvoteBtn.textContent = `👎 (${newDown})`;
+      downvoteBtn.disabled = true;
+      downvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
+    };
 
-downvoteBtn.onclick = async () => {
-  if (localStorage.getItem(voteKey)) return;
-  const newDown = (data.downvotes || 0) + 1;
-  await db.collection("wuensche").doc(doc.id).update({ downvotes: newDown });
-  localStorage.setItem(voteKey, "down");
-  downvoteBtn.textContent = `👎 (${newDown})`;
-  downvoteBtn.disabled = true;
-  downvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
-};
+    votingDiv.appendChild(upvoteBtn);
+    votingDiv.appendChild(downvoteBtn);
+    div.appendChild(votingDiv);
 
-votingDiv.appendChild(upvoteBtn);
-votingDiv.appendChild(downvoteBtn);
-div.appendChild(votingDiv);
+    wunschListe.appendChild(div);
+  }
 
-
-    // Echtzeit Listener, sortiert nach Zeit (neueste oben)
-    db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-      wunschListe.innerHTML = "";
-      snapshot.forEach(doc => {
-        renderWunsch(doc);
+  function loadWishes() {
+    wunschListe.innerHTML = "";
+    db.collection("wuensche")
+      .orderBy("timestamp", "desc")
+      .get()
+      .then(snapshot => {
+        snapshot.forEach(doc => renderWunsch(doc));
       });
-    });
-  </script>
+  }
+
+  // Starte mit einem Initial-Load
+  loadWishes();
+</script>
+
 
 </body>
 </html>
