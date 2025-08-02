@@ -48,12 +48,21 @@
         const container = document.createElement("div");
         container.className = "bg-gray-800 p-4 rounded shadow";
 
+        let statusText = "";
+        if (data.status === "abgelehnt" && data.reason) {
+          statusText = `<span class='text-red-400 font-semibold'>Status: Abgelehnt: ${data.reason}</span>`;
+        } else if (data.status === "angenommen") {
+          statusText = `<span class='text-green-400 font-semibold'>Status: Angenommen</span>`;
+        } else if (data.status === "offen") {
+          statusText = `<span class='text-yellow-400 font-semibold'>Status: Offen</span>`;
+        }
+
         container.innerHTML = `
           <p><strong>${data.title}</strong> von ${data.artist}</p>
           ${data.link ? `<p>🔗 <a href="${data.link}" target="_blank" class="text-blue-400 underline">Link</a></p>` : ""}
           ${data.comment ? `<p>💬 ${data.comment}</p>` : ""}
           <p>👍 ${data.upvotes} / 👎 ${data.downvotes}</p>
-          <p>Status: ${data.status}${data.reason ? ` (${data.reason})` : ""}</p>
+          <p>${statusText}</p>
         `;
 
         if (data.status === "offen") {
