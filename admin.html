@@ -28,6 +28,9 @@
     <input type="password" id="password" placeholder="Passwort" class="w-full p-2 mb-2 rounded text-black">
     <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Login</button>
     <p id="loginError" class="text-red-400 mt-2 hidden">❌ Falscher Benutzername oder Passwort</p>
+    <div class="text-center mt-4">
+      <a href="status.html" class="text-blue-400 hover:underline">⬅ Zurück zur Liste</a>
+    </div>
   </div>
 
   <div id="adminSection" class="hidden max-w-7xl mx-auto">
@@ -113,7 +116,7 @@
 
           const reasonSelect = document.createElement("select");
           reasonSelect.className = "mt-2 p-1 text-black rounded hidden border border-gray-300";
-          ["Unangemessen", "Passt nicht zur Playlist", "Zu laut", "Zuviel Bass"].forEach(reason => {
+          ["Bereits gespielt", "Unangemessen", "Passt nicht zur Playlist", "Zu laut", "Zuviel Bass"].forEach(reason => {
             reasonSelect.add(new Option(reason, reason));
           });
 
@@ -150,8 +153,11 @@
           deleteBtn.textContent = "🗑️ Löschen";
           deleteBtn.className = "mt-2 bg-red-600 hover:bg-red-700 px-2 py-1 rounded";
           deleteBtn.onclick = async () => {
-            await db.collection("wuensche").doc(doc.id).delete();
-            loadWishes();
+            const confirmDelete = confirm("Möchtest du diesen Wunsch wirklich löschen?");
+            if (confirmDelete) {
+              await db.collection("wuensche").doc(doc.id).delete();
+              loadWishes();
+            }
           };
 
           container.appendChild(moveBackBtn);
@@ -160,6 +166,4 @@
         }
       });
     }
-  </script>
-</body>
-</html>
+  </scri
