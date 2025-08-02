@@ -1,275 +1,112 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin | Songwünsche</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – Herdernacht Songwünsche</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+      authDomain: "herder-7dd17.firebaseapp.com",
+      projectId: "herder-7dd17",
+      storageBucket: "herder-7dd17.firebasestorage.app",
+      messagingSenderId: "472463332211",
+      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+      measurementId: "G-HR07N6LXGN"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
 </head>
-<body class="bg-gray-100 text-gray-900">
+<body class="bg-gray-900 text-white p-6">
+  <h1 class="text-2xl font-bold mb-4">🔒 Adminbereich – Songwünsche verwalten</h1>
+  <button onclick="location.href='index.html'" class="mb-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">🔙 Zurück zur Startseite</button>
 
-  <div id="loginContainer" class="flex justify-center items-center h-screen">
-    <form id="loginForm" class="bg-white p-8 rounded shadow-md w-80">
-      <h2 class="text-2xl font-bold mb-4">Admin Login</h2>
-      <input type="password" id="password" placeholder="Passwort" class="w-full p-2 border rounded mb-4">
-      <button type="submit" class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700">Login</button>
-      <p id="loginError" class="text-red-500 mt-2 hidden">Falsches Passwort</p>
-    </form>
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold mb-2">🆕 Neue Wünsche</h2>
+    <div id="newWishes" class="space-y-4"></div>
   </div>
 
-  <div id="dashboard" class="p-6 hidden">
-    <h1 class="text-3xl font-bold mb-4">🎛️ Admin-Dashboard</h1>
-
-    <div class="mb-6">
-      <label for="newSortSelect" class="mr-2 font-semibold">Sortieren (offene Wünsche):</label>
-      <select id="newSortSelect" class="p-1 border rounded">
-        <option value="neu">Neueste zuerst</option>
-        <option value="alt">Älteste zuerst</option>
-        <option value="title">Songname</option>
-        <option value="artist">Interpret</option>
-        <option value="link">Mit/Ohne Link</option>
-      </select>
-    </div>
-
-    <h2 class="text-xl font-semibold mb-2">Neue Wünsche</h2>
-    <table class="w-full mb-10">
-      <thead>
-        <tr class="bg-gray-200 text-left">
-          <th class="p-2">Titel</th>
-          <th class="p-2">Interpret</th>
-          <th class="p-2">Link</th>
-          <th class="p-2">Grund</th>
-          <th class="p-2">Aktion</th>
-        </tr>
-      </thead>
-      <tbody id="newRequests"></tbody>
-    </table>
-
-    <div class="mb-6">
-      <label for="processedSortSelect" class="mr-2 font-semibold">Sortieren (bearbeitet):</label>
-      <select id="processedSortSelect" class="p-1 border rounded">
-        <option value="neu">Neueste zuerst</option>
-        <option value="alt">Älteste zuerst</option>
-        <option value="title">Songname</option>
-        <option value="artist">Interpret</option>
-        <option value="link">Mit/Ohne Link</option>
-      </select>
-    </div>
-
-    <h2 class="text-xl font-semibold mb-2">Bearbeitete Wünsche</h2>
-    <table class="w-full">
-      <thead>
-        <tr class="bg-gray-200 text-left">
-          <th class="p-2">Titel</th>
-          <th class="p-2">Interpret</th>
-          <th class="p-2">Link</th>
-          <th class="p-2">Grund</th>
-          <th class="p-2">Status</th>
-          <th class="p-2">Aktion</th>
-        </tr>
-      </thead>
-      <tbody id="processedRequests"></tbody>
-    </table>
-
-    <button id="backToMainBtn" class="mt-8 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Zurück zur Hauptseite</button>
+  <div>
+    <h2 class="text-xl font-semibold mb-2">✅ Bearbeitete Wünsche</h2>
+    <div id="processedWishes" class="space-y-4"></div>
   </div>
 
   <script>
-    const PASSWORD = "herderadmin2025"; // Passwort hier anpassen
+    const newWishesDiv = document.getElementById("newWishes");
+    const processedDiv = document.getElementById("processedWishes");
 
-    let songs = [
-      { id: 1, title: "Song A", artist: "Künstler A", link: "", reason: "", status: "offen" },
-      { id: 2, title: "Song B", artist: "Künstler B", link: "https://youtu.be/test", reason: "", status: "offen" },
+    const ablehnGruende = [
+      "Unangemessen", "Passt nicht zur Playlist", "Zu laut", "Zu viel Bass", "Technisch problematisch"
     ];
 
-    const rejectionReasons = [
-      "Unangemessen",
-      "Passt nicht zur Playlist",
-      "Zu laut",
-      "Zuviel Bass",
-      "Anderer Grund"
-    ];
-
-    const loginForm = document.getElementById('loginForm');
-    const loginContainer = document.getElementById('loginContainer');
-    const dashboard = document.getElementById('dashboard');
-    const loginError = document.getElementById('loginError');
-    const newRequests = document.getElementById('newRequests');
-    const processedRequests = document.getElementById('processedRequests');
-    const newSortSelect = document.getElementById('newSortSelect');
-    const processedSortSelect = document.getElementById('processedSortSelect');
-    const backToMainBtn = document.getElementById('backToMainBtn');
-
-    let rejectingSongId = null;
-
-    function createLinkHtml(link) {
-      if (!link) return '-';
-      return `<a href="${link}" target="_blank" class="text-blue-600 underline">Link</a>`;
-    }
-
-    function filterAndSort(list, mode) {
-      if (mode === 'link') {
-        return list.sort((a, b) => (b.link ? 1 : 0) - (a.link ? 1 : 0));
-      }
-      return list;
-    }
-
-    function sortSongs(list, mode) {
-      if (mode === 'neu') return list.sort((a, b) => b.id - a.id);
-      if (mode === 'alt') return list.sort((a, b) => a.id - b.id);
-      if (mode === 'title') return list.sort((a, b) => a.title.localeCompare(b.title));
-      if (mode === 'artist') return list.sort((a, b) => a.artist.localeCompare(b.artist));
-      return list;
-    }
-
-    function renderNewRequests() {
-      let newSongs = songs.filter(s => s.status === 'offen');
-      newSongs = filterAndSort(newSongs, newSortSelect.value);
-      newSongs = sortSongs(newSongs, newSortSelect.value);
-
-      newRequests.innerHTML = '';
-
-      newSongs.forEach(song => {
-        const tr = document.createElement('tr');
-        const isRejecting = rejectingSongId === song.id;
-        tr.innerHTML = `
-          <td class="p-2">${song.title}</td>
-          <td class="p-2">${song.artist}</td>
-          <td class="p-2">${createLinkHtml(song.link)}</td>
-          <td class="p-2">${song.reason || '-'}</td>
-          <td class="p-2">
-            ${isRejecting ? `
-              <select id="rejectReasonSelect" class="p-1 border rounded">
-                ${rejectionReasons.map(r => `<option value="${r}">${r}</option>`).join('')}
-              </select>
-              <button id="saveRejectBtn" class="ml-2 bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">Speichern</button>
-              <button id="cancelRejectBtn" class="ml-2 bg-gray-300 px-2 py-1 rounded hover:bg-gray-400">Abbrechen</button>
-            ` : `
-              <button class="acceptBtn bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600" data-id="${song.id}">Annehmen</button>
-              <button class="rejectBtn bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600" data-id="${song.id}">Ablehnen</button>
-              <button class="deleteBtn bg-gray-400 text-black px-2 py-1 rounded hover:bg-gray-500" data-id="${song.id}">Löschen</button>
-            `}
-          </td>
-        `;
-        newRequests.appendChild(tr);
+    function createDropdown(options, selected, onchange) {
+      const select = document.createElement("select");
+      select.className = "bg-gray-800 p-1 text-white rounded border border-gray-600 ml-2";
+      options.forEach(opt => {
+        const o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === selected) o.selected = true;
+        select.appendChild(o);
       });
+      select.onchange = onchange;
+      return select;
+    }
 
-      newRequests.querySelectorAll('.acceptBtn').forEach(btn => {
-        btn.onclick = () => {
-          const id = parseInt(btn.dataset.id);
-          const song = songs.find(s => s.id === id);
-          if (song) {
-            song.status = 'gespielt';
-            renderAll();
+    function renderWish(doc) {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.className = "bg-gray-800 p-4 rounded shadow";
+      div.innerHTML = `
+        <p><strong>${data.title}</strong> – ${data.artist}</p>
+        ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
+        ${data.reason ? `<p class="text-sm italic mt-1">${data.reason}</p>` : ""}
+      `;
+
+      if (data.status === "offen") {
+        const acceptBtn = document.createElement("button");
+        acceptBtn.textContent = "✅ Annehmen";
+        acceptBtn.className = "bg-green-600 px-2 py-1 rounded mr-2 mt-2 hover:bg-green-700";
+        acceptBtn.onclick = () => db.collection("wuensche").doc(doc.id).update({ status: "angenommen" });
+
+        const declineBtn = document.createElement("button");
+        declineBtn.textContent = "❌ Ablehnen";
+        declineBtn.className = "bg-red-600 px-2 py-1 rounded mt-2 hover:bg-red-700";
+        const reasonSelect = createDropdown(["Ablehnungsgrund wählen", ...ablehnGruende], "Ablehnungsgrund wählen", e => {
+          if (e.target.value !== "Ablehnungsgrund wählen") {
+            db.collection("wuensche").doc(doc.id).update({ status: `abgelehnt: ${e.target.value}` });
           }
-        };
-      });
+        });
 
-      newRequests.querySelectorAll('.rejectBtn').forEach(btn => {
-        btn.onclick = () => {
-          rejectingSongId = parseInt(btn.dataset.id);
-          renderNewRequests();
-        };
-      });
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "🗑️ Löschen";
+        deleteBtn.className = "bg-gray-600 px-2 py-1 rounded ml-2 mt-2 hover:bg-gray-700";
+        deleteBtn.onclick = () => db.collection("wuensche").doc(doc.id).delete();
 
-      newRequests.querySelectorAll('.deleteBtn').forEach(btn => {
-        btn.onclick = () => {
-          const id = parseInt(btn.dataset.id);
-          songs = songs.filter(s => s.id !== id);
-          renderAll();
-        };
-      });
+        div.appendChild(acceptBtn);
+        div.appendChild(declineBtn);
+        div.appendChild(reasonSelect);
+        div.appendChild(deleteBtn);
 
-      if (rejectingSongId !== null) {
-        const saveBtn = document.getElementById('saveRejectBtn');
-        const cancelBtn = document.getElementById('cancelRejectBtn');
-        const reasonSelect = document.getElementById('rejectReasonSelect');
-
-        saveBtn.onclick = () => {
-          const song = songs.find(s => s.id === rejectingSongId);
-          if (song) {
-            song.status = 'abgelehnt';
-            song.reason = reasonSelect.value;
-            rejectingSongId = null;
-            renderAll();
-          }
-        };
-
-        cancelBtn.onclick = () => {
-          rejectingSongId = null;
-          renderNewRequests();
-        };
-      }
-    }
-
-    function renderProcessedRequests() {
-      let processedSongs = songs.filter(s => s.status === 'abgelehnt' || s.status === 'gespielt');
-      processedSongs = filterAndSort(processedSongs, processedSortSelect.value);
-      processedSongs = sortSongs(processedSongs, processedSortSelect.value);
-
-      processedRequests.innerHTML = '';
-
-      processedSongs.forEach(song => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="p-2">${song.title}</td>
-          <td class="p-2">${song.artist}</td>
-          <td class="p-2">${createLinkHtml(song.link)}</td>
-          <td class="p-2">${song.reason || '-'}</td>
-          <td class="p-2">${song.status.charAt(0).toUpperCase() + song.status.slice(1)}</td>
-          <td class="p-2">
-            <button class="moveToWaitingBtn bg-yellow-400 px-2 py-1 rounded hover:bg-yellow-500" data-id="${song.id}">Zurück in Warteschlange</button>
-            <button class="deleteBtn bg-gray-400 px-2 py-1 rounded hover:bg-gray-500" data-id="${song.id}">Löschen</button>
-          </td>
-        `;
-        processedRequests.appendChild(tr);
-      });
-
-      processedRequests.querySelectorAll('.moveToWaitingBtn').forEach(btn => {
-        btn.onclick = () => {
-          const id = parseInt(btn.dataset.id);
-          const song = songs.find(s => s.id === id);
-          if (song) {
-            song.status = 'offen';
-            renderAll();
-          }
-        };
-      });
-
-      processedRequests.querySelectorAll('.deleteBtn').forEach(btn => {
-        btn.onclick = () => {
-          const id = parseInt(btn.dataset.id);
-          songs = songs.filter(s => s.id !== id);
-          renderAll();
-        };
-      });
-    }
-
-    function renderAll() {
-      renderNewRequests();
-      renderProcessedRequests();
-    }
-
-    newSortSelect.onchange = renderNewRequests;
-    processedSortSelect.onchange = renderProcessedRequests;
-
-    loginForm.onsubmit = (e) => {
-      e.preventDefault();
-      const pw = document.getElementById('password').value;
-      if (pw === PASSWORD) {
-        loginContainer.classList.add('hidden');
-        dashboard.classList.remove('hidden');
-        renderAll();
-        loginError.classList.add('hidden');
+        newWishesDiv.appendChild(div);
       } else {
-        loginError.classList.remove('hidden');
+        const statusSelect = createDropdown(["angenommen", "gespielt", "abgelehnt", "offen"], data.status.split(":")[0], e => {
+          db.collection("wuensche").doc(doc.id).update({ status: e.target.value });
+        });
+        div.appendChild(statusSelect);
+        processedDiv.appendChild(div);
       }
-    };
+    }
 
-    backToMainBtn.onclick = () => {
-      window.location.href = 'index.html';
-    };
+    db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+      newWishesDiv.innerHTML = "";
+      processedDiv.innerHTML = "";
+      snapshot.forEach(doc => renderWish(doc));
+    });
   </script>
-
 </body>
 </html>
