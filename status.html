@@ -78,34 +78,50 @@
       status.textContent = statusText;
       div.appendChild(status);
 
-      // Voting (optional)
       const votingDiv = document.createElement("div");
-      votingDiv.className = "mt-3 flex items-center space-x-4";
+votingDiv.className = "mt-3 flex items-center space-x-4";
 
-      const upvoteBtn = document.createElement("button");
-      upvoteBtn.textContent = `👍 (${data.upvotes || 0})`;
-      upvoteBtn.className = "bg-green-600 px-3 py-1 rounded hover:bg-green-700";
-      upvoteBtn.onclick = async () => {
-        const newUp = (data.upvotes || 0) + 1;
-        await db.collection("wuensche").doc(doc.id).update({ upvotes: newUp });
-        upvoteBtn.textContent = `👍 (${newUp})`;
-      };
+const upvoteBtn = document.createElement("button");
+const downvoteBtn = document.createElement("button");
 
-      const downvoteBtn = document.createElement("button");
-      downvoteBtn.textContent = `👎 (${data.downvotes || 0})`;
-      downvoteBtn.className = "bg-red-600 px-3 py-1 rounded hover:bg-red-700";
-      downvoteBtn.onclick = async () => {
-        const newDown = (data.downvotes || 0) + 1;
-        await db.collection("wuensche").doc(doc.id).update({ downvotes: newDown });
-        downvoteBtn.textContent = `👎 (${newDown})`;
-      };
+const voteKey = `vote_${doc.id}`; // z. B. vote_abc123
 
-      votingDiv.appendChild(upvoteBtn);
-      votingDiv.appendChild(downvoteBtn);
-      div.appendChild(votingDiv);
+const alreadyVoted = localStorage.getItem(voteKey);
 
-      wunschListe.appendChild(div);
-    }
+upvoteBtn.textContent = `👍 (${data.upvotes || 0})`;
+upvoteBtn.className = "bg-green-600 px-3 py-1 rounded hover:bg-green-700";
+upvoteBtn.disabled = alreadyVoted !== null;
+if (upvoteBtn.disabled) upvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
+
+upvoteBtn.onclick = async () => {
+  if (localStorage.getItem(voteKey)) return;
+  const newUp = (data.upvotes || 0) + 1;
+  await db.collection("wuensche").doc(doc.id).update({ upvotes: newUp });
+  localStorage.setItem(voteKey, "up");
+  upvoteBtn.textContent = `👍 (${newUp})`;
+  upvoteBtn.disabled = true;
+  upvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
+};
+
+downvoteBtn.textContent = `👎 (${data.downvotes || 0})`;
+downvoteBtn.className = "bg-red-600 px-3 py-1 rounded hover:bg-red-700";
+downvoteBtn.disabled = alreadyVoted !== null;
+if (downvoteBtn.disabled) downvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
+
+downvoteBtn.onclick = async () => {
+  if (localStorage.getItem(voteKey)) return;
+  const newDown = (data.downvotes || 0) + 1;
+  await db.collection("wuensche").doc(doc.id).update({ downvotes: newDown });
+  localStorage.setItem(voteKey, "down");
+  downvoteBtn.textContent = `👎 (${newDown})`;
+  downvoteBtn.disabled = true;
+  downvoteBtn.classList.add("opacity-50", "cursor-not-allowed");
+};
+
+votingDiv.appendChild(upvoteBtn);
+votingDiv.appendChild(downvoteBtn);
+div.appendChild(votingDiv);
+
 
     // Echtzeit Listener, sortiert nach Zeit (neueste oben)
     db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
