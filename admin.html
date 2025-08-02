@@ -3,155 +3,123 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin - Herdernacht Wünsche</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <title>Adminbereich – Herdernacht</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+      authDomain: "herder-7dd17.firebaseapp.com",
+      projectId: "herder-7dd17",
+      storageBucket: "herder-7dd17.firebasestorage.app",
+      messagingSenderId: "472463332211",
+      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+      measurementId: "G-HR07N6LXGN"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen p-6">
-  <div id="loginView" class="flex flex-col items-center justify-center min-h-screen space-y-4">
-    <h2 class="text-xl font-bold">🔒 Admin Login</h2>
-    <input id="adminPassword" type="password" placeholder="Admin-Passwort" class="p-2 rounded text-black" />
-    <button onclick="checkLogin()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Login</button>
-    <button onclick="location.href='index.html'" class="text-sm mt-4 text-gray-400 hover:text-gray-200">⬅ Zur Startseite</button>
-  </div>
-
-  <div id="adminView" class="hidden">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">🎛️ Admin-Bereich</h1>
-      <button onclick="location.href='index.html'" class="text-sm text-gray-400 hover:text-gray-200">⬅ Zur Startseite</button>
+  <div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">🎧 Adminbereich – Songwünsche verwalten</h1>
+    <div class="mb-6 text-center">
+      <a href="index.html" class="text-blue-400 hover:underline">⬅ Zur Startseite</a>
     </div>
 
-    <div>
-      <h2 class="text-xl mb-2 font-semibold">🆕 Offene Wünsche</h2>
-      <div id="openWishes" class="space-y-4"></div>
-    </div>
+    <h2 class="text-xl font-semibold mb-4">🕓 Offene Wünsche</h2>
+    <div id="pendingList" class="space-y-4"></div>
 
-    <div class="mt-8">
-      <h2 class="text-xl mb-2 font-semibold">📦 Bearbeitete Wünsche</h2>
-      <div id="processedWishes" class="space-y-4"></div>
-    </div>
+    <h2 class="text-xl font-semibold mt-10 mb-4">✅ Bearbeitete Wünsche</h2>
+    <div id="processedList" class="space-y-4"></div>
   </div>
 
   <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
-    authDomain: "herder-7dd17.firebaseapp.com",
-    projectId: "herder-7dd17",
-    storageBucket: "herder-7dd17.firebasestorage.app",
-    messagingSenderId: "472463332211",
-    appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
-    measurementId: "G-HR07N6LXGN"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+    async function loadWishes() {
+      const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
+      const pendingList = document.getElementById("pendingList");
+      const processedList = document.getElementById("processedList");
+      pendingList.innerHTML = "";
+      processedList.innerHTML = "";
 
-  const adminPass = "herdernacht2025"; // Dein Adminpasswort
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const container = document.createElement("div");
+        container.className = "bg-gray-800 p-4 rounded shadow";
 
-  function checkLogin() {
-    const entered = document.getElementById("adminPassword").value;
-    if (entered === adminPass) {
-      document.getElementById("loginView").classList.add("hidden");
-      document.getElementById("adminView").classList.remove("hidden");
-      loadWishes();
-    } else {
-      alert("Falsches Passwort");
-    }
-  }
-
-  async function loadWishes() {
-    const snapshot = await db.collection("wuensche").orderBy("timestamp", "desc").get();
-    const openDiv = document.getElementById("openWishes");
-    const processedDiv = document.getElementById("processedWishes");
-    openDiv.innerHTML = "";
-    processedDiv.innerHTML = "";
-
-    snapshot.forEach(doc => {
-      const wish = doc.data();
-      const div = document.createElement("div");
-      div.className = "bg-gray-800 p-4 rounded shadow";
-
-      const info = `
-        <p><strong>${wish.title}</strong> von <em>${wish.artist}</em></p>
-        ${wish.link ? `<p>🔗 <a href="${wish.link}" class="text-blue-400" target="_blank">Link</a></p>` : ""}
-        ${wish.comment ? `<p>💬 ${wish.comment}</p>` : ""}
-        <p>👍 ${wish.upvotes || 0} | 👎 ${wish.downvotes || 0}</p>
-        ${wish.status === "abgelehnt" && wish.ablehnungsgrund ? `<p class="text-red-400">❌ Grund: ${wish.ablehnungsgrund}</p>` : ""}
-      `;
-
-      div.innerHTML = info;
-
-      if (wish.status === "offen") {
-        const select = document.createElement("select");
-        select.className = "mt-2 p-2 text-black rounded";
-        select.innerHTML = `
-          <option value="">Aktion wählen</option>
-          <option value="angenommen">✅ Annehmen</option>
-          <option value="abgelehnt">❌ Ablehnen</option>
-          <option value="geloescht">🗑️ Löschen</option>
+        container.innerHTML = `
+          <p><strong>${data.title}</strong> von ${data.artist}</p>
+          ${data.link ? `<p>🔗 <a href="${data.link}" target="_blank" class="text-blue-400 underline">Link</a></p>` : ""}
+          ${data.comment ? `<p>💬 ${data.comment}</p>` : ""}
+          <p>👍 ${data.upvotes} / 👎 ${data.downvotes}</p>
+          <p>Status: ${data.status}${data.reason ? ` (${data.reason})` : ""}</p>
         `;
 
-        const reasonSelect = document.createElement("select");
-        reasonSelect.className = "mt-2 p-2 text-black rounded hidden";
-        reasonSelect.innerHTML = `
-          <option value="">Grund wählen</option>
-          <option value="Unangemessen">Unangemessen</option>
-          <option value="Passt nicht zur Playlist">Passt nicht zur Playlist</option>
-          <option value="Zu laut">Zu laut</option>
-          <option value="Zu viel Bass">Zu viel Bass</option>
-        `;
-
-        select.addEventListener("change", async () => {
-          if (select.value === "angenommen") {
-            await db.collection("wuensche").doc(doc.id).update({ status: "angenommen" });
+        if (data.status === "offen") {
+          const acceptBtn = document.createElement("button");
+          acceptBtn.textContent = "✅ Annehmen";
+          acceptBtn.className = "mt-2 mr-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded";
+          acceptBtn.onclick = async () => {
+            await db.collection("wuensche").doc(doc.id).update({ status: "angenommen", reason: firebase.firestore.FieldValue.delete() });
             loadWishes();
-          } else if (select.value === "abgelehnt") {
+          };
+
+          const declineBtn = document.createElement("button");
+          declineBtn.textContent = "❌ Ablehnen";
+          declineBtn.className = "mt-2 mr-2 bg-red-600 hover:bg-red-700 px-2 py-1 rounded";
+
+          const reasonSelect = document.createElement("select");
+          reasonSelect.className = "mt-2 p-1 text-black rounded hidden border border-gray-300";
+          ["Unangemessen", "Passt nicht zur Playlist", "Zu laut", "Zuviel Bass"].forEach(reason => {
+            reasonSelect.add(new Option(reason, reason));
+          });
+
+          const saveBtn = document.createElement("button");
+          saveBtn.textContent = "Speichern";
+          saveBtn.className = "ml-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded hidden";
+
+          declineBtn.onclick = () => {
             reasonSelect.classList.remove("hidden");
-          } else if (select.value === "geloescht") {
+            saveBtn.classList.remove("hidden");
+          };
+
+          saveBtn.onclick = async () => {
+            const selectedReason = reasonSelect.value;
+            await db.collection("wuensche").doc(doc.id).update({ status: "abgelehnt", reason: selectedReason });
+            loadWishes();
+          };
+
+          container.appendChild(acceptBtn);
+          container.appendChild(declineBtn);
+          container.appendChild(reasonSelect);
+          container.appendChild(saveBtn);
+          pendingList.appendChild(container);
+        } else {
+          const moveBackBtn = document.createElement("button");
+          moveBackBtn.textContent = "🔁 Zurückstellen";
+          moveBackBtn.className = "mt-2 mr-2 bg-yellow-600 hover:bg-yellow-700 px-2 py-1 rounded";
+          moveBackBtn.onclick = async () => {
+            await db.collection("wuensche").doc(doc.id).update({ status: "offen" });
+            loadWishes();
+          };
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "🗑️ Löschen";
+          deleteBtn.className = "mt-2 bg-red-600 hover:bg-red-700 px-2 py-1 rounded";
+          deleteBtn.onclick = async () => {
             await db.collection("wuensche").doc(doc.id).delete();
             loadWishes();
-          }
-        });
+          };
 
-        reasonSelect.addEventListener("change", async () => {
-          if (reasonSelect.value) {
-            await db.collection("wuensche").doc(doc.id).update({
-              status: "abgelehnt",
-              ablehnungsgrund: reasonSelect.value
-            });
-            loadWishes();
-          }
-        });
+          container.appendChild(moveBackBtn);
+          container.appendChild(deleteBtn);
+          processedList.appendChild(container);
+        }
+      });
+    }
 
-        div.appendChild(select);
-        div.appendChild(reasonSelect);
-        openDiv.appendChild(div);
-      } else {
-        const processedSelect = document.createElement("select");
-        processedSelect.className = "mt-2 p-2 text-black rounded";
-        processedSelect.innerHTML = `
-          <option value="">Status ändern</option>
-          <option value="offen">🕒 Wieder offen</option>
-          <option value="gespielt">✅ Gespielt</option>
-          <option value="geloescht">🗑️ Löschen</option>
-        `;
-        processedSelect.addEventListener("change", async () => {
-          if (processedSelect.value === "geloescht") {
-            await db.collection("wuensche").doc(doc.id).delete();
-          } else {
-            await db.collection("wuensche").doc(doc.id).update({
-              status: processedSelect.value
-            });
-          }
-          loadWishes();
-        });
-
-        div.appendChild(processedSelect);
-        processedDiv.appendChild(div);
-      }
-    });
-  }
-</script>
-
+    loadWishes();
+  </script>
 </body>
 </html>
