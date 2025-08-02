@@ -57,39 +57,14 @@
       return select;
     }
 
-    function getStatusBase(status) {
-      // Trennt "abgelehnt: Grund" in ["abgelehnt", "Grund"]
-      if (!status) return "";
-      if (status.includes(":")) {
-        return status.split(":")[0].trim();
-      }
-      return status;
-    }
-
-    function getRejectionReason(status) {
-      if (!status) return "";
-      if (status.includes(":")) {
-        return status.split(":").slice(1).join(":").trim();
-      }
-      return "";
-    }
-
     function renderWish(doc) {
       const data = doc.data();
       const div = document.createElement("div");
       div.className = "bg-gray-800 p-4 rounded shadow";
-
-      const votesInfo = `
-        <p class="mt-1 text-sm text-yellow-300">
-          👍 ${data.upvotes || 0}  |  👎 ${data.downvotes || 0}
-        </p>
-      `;
-
       div.innerHTML = `
         <p><strong>${data.title}</strong> – ${data.artist}</p>
         ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
         ${data.reason ? `<p class="text-sm italic mt-1">${data.reason}</p>` : ""}
-        ${votesInfo}
       `;
 
       if (data.status === "offen") {
@@ -101,6 +76,7 @@
         const declineBtn = document.createElement("button");
         declineBtn.textContent = "❌ Ablehnen";
         declineBtn.className = "bg-red-600 px-2 py-1 rounded mt-2 hover:bg-red-700";
+
         const reasonSelect = createDropdown(["Ablehnungsgrund wählen", ...ablehnGruende], "Ablehnungsgrund wählen", e => {
           if (e.target.value !== "Ablehnungsgrund wählen") {
             db.collection("wuensche").doc(doc.id).update({ status: `abgelehnt: ${e.target.value}` });
@@ -119,26 +95,19 @@
 
         newWishesDiv.appendChild(div);
       } else {
-        // Status ohne Ablehnungsgrund anzeigen im Dropdown
-        const baseStatus = getStatusBase(data.status);
-        const rejectionReason = getRejectionReason(data.status);
+        const statusBase = data.status.includes(":") ? data.status.split(":")[0] : data.status;
 
-        const statusSelect = createDropdown(
-          ["angenommen", "gespielt", "abgelehnt", "offen"],
-          baseStatus,
-          e => {
-            db.collection("wuensche").doc(doc.id).update({ status: e.target.value });
-          }
-        );
+        const statusSelect = createDropdown(["angenommen", "gespielt", "abgelehnt", "offen"], statusBase, e => {
+          db.collection("wuensche").doc(doc.id).update({ status: e.target.value });
+        });
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "🗑️ Löschen";
+        deleteBtn.className = "bg-gray-600 px-2 py-1 rounded ml-2 hover:bg-gray-700";
+        deleteBtn.onclick = () => db.collection("wuensche").doc(doc.id).delete();
+
         div.appendChild(statusSelect);
-
-        // Falls abgelehnt, Grund anzeigen (nur Text, kein Dropdown)
-        if (rejectionReason) {
-          const reasonP = document.createElement("p");
-          reasonP.className = "text-sm italic mt-1 text-red-400";
-          reasonP.textContent = `Grund: ${rejectionReason}`;
-          div.appendChild(reasonP);
-        }
+        div.appendChild(deleteBtn);
 
         processedDiv.appendChild(div);
       }
