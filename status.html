@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Status – Herdernacht Songwünsche</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script>
@@ -39,15 +39,126 @@
     const gespieltDiv = document.getElementById("gespieltWishes");
     const abgelehntDiv = document.getElementById("abgelehntWishes");
 
-    function renderWish(data) {
+    // Session Storage Schlüssel für Votes
+    // speichert pro Song-ID, ob up- oder downgevotet wurde
+    const voteStorageKey = "herdernacht_votes";
+
+    // Hol Votes aus sessionStorage oder neues Objekt
+    function getVotesFromStorage() {
+      try {
+        return JSON.parse(sessionStorage.getItem(voteStorageKey)) || {};
+      } catch {
+        return {};
+      }
+    }
+    function saveVotesToStorage(votes) {
+      sessionStorage.setItem(voteStorageKey, JSON.stringify(votes));
+    }
+
+    function renderWish(doc) {
+      const data = doc.data();
+      const id = doc.id;
+
       const div = document.createElement("div");
       div.className = "bg-gray-800 p-4 rounded shadow";
+
+      const hasLink = data.link ? true : false;
+      const reasonText = data.status.includes(":") ? `<p class="text-sm italic mt-1">Grund: ${data.status.split(":")[1]}</p>` : "";
+
+      // Votes initialisieren falls nicht vorhanden
+      if (typeof data.upvotes !== "number") data.upvotes = 0;
+      if (typeof data.downvotes !== "number") data.downvotes = 0;
+
+      // Lade lokale Votes
+      const votesLocal = getVotesFromStorage();
+      const userVote = votesLocal[id] || null; // "up" / "down" / null
+
       div.innerHTML = `
         <p><strong>${data.title}</strong> – ${data.artist}</p>
-        ${data.link ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
-        ${data.status.includes(":") ? `<p class="text-sm italic mt-1">Grund: ${data.status.split(":")[1]}</p>` : ""}
+        ${hasLink ? `<a href="${data.link}" class="text-blue-400 underline" target="_blank">🔗 Link</a>` : ""}
+        ${reasonText}
+        <div class="mt-2 flex items-center space-x-4">
+          <button id="upvote-${id}" class="px-3 py-1 rounded ${userVote === 'up' ? 'bg-green-600' : 'bg-gray-700 hover:bg-green-600'}">👍 <span id="upcount-${id}">${data.upvotes}</span></button>
+          <button id="downvote-${id}" class="px-3 py-1 rounded ${userVote === 'down' ? 'bg-red-600' : 'bg-gray-700 hover:bg-red-600'}">👎 <span id="downcount-${id}">${data.downvotes}</span></button>
+        </div>
       `;
+
+      // Upvote Klick
+      div.querySelector(`#upvote-${id}`).onclick = () => {
+        if (userVote === "up") return; // nur einmal upvoten
+        const batch = db.batch();
+        const ref = db.collection("wuensche").doc(id);
+
+        // Wenn vorher downgevotet, downvote entfernen
+        if (userVote === "down") {
+          batch.update(ref, { downvotes: data.downvotes - 1 });
+          data.downvotes--;
+        }
+        batch.update(ref, { upvotes: data.upvotes + 1 });
+        data.upvotes++;
+
+        batch.commit().then(() => {
+          votesLocal[id] = "up";
+          saveVotesToStorage(votesLocal);
+          updateVoteUI(id, data.upvotes, data.downvotes);
+        });
+      };
+
+      // Downvote Klick
+      div.querySelector(`#downvote-${id}`).onclick = () => {
+        if (userVote === "down") return; // nur einmal downvoten
+        const batch = db.batch();
+        const ref = db.collection("wuensche").doc(id);
+
+        // Wenn vorher upgevotet, upvote entfernen
+        if (userVote === "up") {
+          batch.update(ref, { upvotes: data.upvotes - 1 });
+          data.upvotes--;
+        }
+        batch.update(ref, { downvotes: data.downvotes + 1 });
+        data.downvotes++;
+
+        batch.commit().then(() => {
+          votesLocal[id] = "down";
+          saveVotesToStorage(votesLocal);
+          updateVoteUI(id, data.upvotes, data.downvotes);
+        });
+      };
+
       return div;
+    }
+
+    function updateVoteUI(id, up, down) {
+      const upCountSpan = document.getElementById(`upcount-${id}`);
+      const downCountSpan = document.getElementById(`downcount-${id}`);
+      if (upCountSpan) upCountSpan.textContent = up;
+      if (downCountSpan) downCountSpan.textContent = down;
+
+      // Buttons einfärben je nach Status
+      const votesLocal = getVotesFromStorage();
+      const userVote = votesLocal[id] || null;
+
+      const upBtn = document.getElementById(`upvote-${id}`);
+      const downBtn = document.getElementById(`downvote-${id}`);
+
+      if (upBtn && downBtn) {
+        if (userVote === "up") {
+          upBtn.classList.add("bg-green-600");
+          upBtn.classList.remove("bg-gray-700", "hover:bg-green-600");
+          downBtn.classList.remove("bg-red-600");
+          downBtn.classList.add("bg-gray-700", "hover:bg-red-600");
+        } else if (userVote === "down") {
+          downBtn.classList.add("bg-red-600");
+          downBtn.classList.remove("bg-gray-700", "hover:bg-red-600");
+          upBtn.classList.remove("bg-green-600");
+          upBtn.classList.add("bg-gray-700", "hover:bg-green-600");
+        } else {
+          upBtn.classList.remove("bg-green-600");
+          upBtn.classList.add("bg-gray-700", "hover:bg-green-600");
+          downBtn.classList.remove("bg-red-600");
+          downBtn.classList.add("bg-gray-700", "hover:bg-red-600");
+        }
+      }
     }
 
     db.collection("wuensche").orderBy("timestamp", "desc").onSnapshot(snapshot => {
@@ -56,9 +167,9 @@
       snapshot.forEach(doc => {
         const data = doc.data();
         if (data.status === "gespielt") {
-          gespieltDiv.appendChild(renderWish(data));
+          gespieltDiv.appendChild(renderWish(doc));
         } else if (data.status.startsWith("abgelehnt")) {
-          abgelehntDiv.appendChild(renderWish(data));
+          abgelehntDiv.appendChild(renderWish(doc));
         }
       });
     });
