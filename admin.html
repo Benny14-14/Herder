@@ -32,16 +32,42 @@
       background-color: #10b981;
       color: white;
     }
-    select {
+    select, button {
       padding: 0.25rem 0.5rem;
       border-radius: 0.25rem;
       border: 1px solid #9ca3af;
       cursor: pointer;
       font-weight: 600;
+      background-color: white;
     }
     a {
       color: #059669;
       text-decoration: underline;
+    }
+    .filter-container {
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-label {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    #backToMainBtn {
+      align-self: flex-start;
+      margin-bottom: 1rem;
+      background-color: #10b981;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.3rem;
+      transition: background-color 0.2s;
+    }
+    #backToMainBtn:hover {
+      background-color: #059669;
     }
   </style>
 </head>
@@ -57,11 +83,24 @@
     </form>
   </div>
 
-  <div id="dashboard" class="hidden max-w-5xl mx-auto">
+  <div id="dashboard" class="hidden max-w-5xl mx-auto flex flex-col">
+    <button id="backToMainBtn" title="Zur Hauptseite mit Songwünschen">← Zur Hauptseite</button>
+
     <h1 class="text-3xl font-bold mb-6 text-center">🎛️ Technik-Team Dashboard</h1>
 
     <section>
-      <h2 class="text-2xl font-semibold mb-2">Neue Wünsche (offen)</h2>
+      <h2 class="text-2xl font-semibold mb-1">Neue Wünsche (offen)</h2>
+      <div class="filter-container">
+        <label class="filter-label" for="newSortSelect">Sortieren nach:</label>
+        <select id="newSortSelect" aria-label="Sortieren neue Wünsche">
+          <option value="neuestes" selected>Neuestes</option>
+          <option value="ältestes">Ältestes</option>
+          <option value="songname">Name (Song)</option>
+          <option value="interpret">Name (Interpret)</option>
+          <option value="linkvorhanden">Nur mit Link</option>
+          <option value="linknicht">Nur ohne Link</option>
+        </select>
+      </div>
       <table aria-label="Neue Songwünsche">
         <thead>
           <tr>
@@ -77,7 +116,18 @@
     </section>
 
     <section>
-      <h2 class="text-2xl font-semibold mb-2">Bearbeitete Wünsche (gespielt, abgelehnt)</h2>
+      <h2 class="text-2xl font-semibold mb-1">Bearbeitete Wünsche (gespielt, abgelehnt)</h2>
+      <div class="filter-container">
+        <label class="filter-label" for="processedSortSelect">Sortieren nach:</label>
+        <select id="processedSortSelect" aria-label="Sortieren bearbeitete Wünsche">
+          <option value="neuestes" selected>Neuestes</option>
+          <option value="ältestes">Ältestes</option>
+          <option value="songname">Name (Song)</option>
+          <option value="interpret">Name (Interpret)</option>
+          <option value="linkvorhanden">Nur mit Link</option>
+          <option value="linknicht">Nur ohne Link</option>
+        </select>
+      </div>
       <table aria-label="Bearbeitete Songwünsche">
         <thead>
           <tr>
@@ -103,6 +153,7 @@
       { id: 2, title: "Levitating", artist: "Dua Lipa", link: "", reason: "", status: "gespielt" },
       { id: 3, title: "Shape of You", artist: "Ed Sheeran", link: "https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3", reason: "Partyhit", status: "abgelehnt" },
       { id: 4, title: "Bad Habits", artist: "Ed Sheeran", link: "", reason: "Cooler Beat", status: "offen" },
+      { id: 5, title: "Drivers License", artist: "Olivia Rodrigo", link: "https://youtu.be/ZmDBbnmKpqQ", reason: "Emotional", status: "offen" },
     ];
 
     const loginContainer = document.getElementById('login-container');
@@ -111,87 +162,58 @@
     const loginError = document.getElementById('loginError');
     const newRequests = document.getElementById('newRequests');
     const processedRequests = document.getElementById('processedRequests');
+    const newSortSelect = document.getElementById('newSortSelect');
+    const processedSortSelect = document.getElementById('processedSortSelect');
+    const backToMainBtn = document.getElementById('backToMainBtn');
 
+    // Hilfsfunktion Link-HTML
     function createLinkHtml(link) {
       if (!link) return '-';
       return `<a href="${link}" target="_blank" rel="noopener noreferrer">Link</a>`;
     }
 
-    function renderTables() {
-      // Neue Wünsche (offen)
-      newRequests.innerHTML = '';
-      songs.filter(s => s.status === 'offen').forEach(song => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${song.title}</td>
-          <td>${song.artist}</td>
-          <td>${createLinkHtml(song.link)}</td>
-          <td>${song.reason || '-'}</td>
-          <td>
-            <select data-id="${song.id}">
-              <option value="" selected>-- auswählen --</option>
-              <option value="gespielt">Annehmen (gespielt)</option>
-              <option value="abgelehnt">Ablehnen</option>
-              <option value="löschen">Löschen</option>
-            </select>
-          </td>
-        `;
-        newRequests.appendChild(tr);
-      });
+    // Sortier- und Filterfunktion
+    function filterAndSort(arr, filter) {
+      let filtered = [...arr];
 
-      // Bearbeitete Wünsche (gespielt, abgelehnt)
-      processedRequests.innerHTML = '';
-      songs.filter(s => s.status !== 'offen').forEach(song => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${song.title}</td>
-          <td>${song.artist}</td>
-          <td>${createLinkHtml(song.link)}</td>
-          <td>${song.reason || '-'}</td>
-          <td>${song.status.charAt(0).toUpperCase() + song.status.slice(1)}</td>
-          <td>
-            <select data-id="${song.id}">
-              <option value="" selected>-- auswählen --</option>
-              <option value="offen">Zurück in Warteschlange</option>
-              <option value="gespielt">Als gespielt markieren</option>
-              <option value="abgelehnt">Ablehnen</option>
-              <option value="löschen">Löschen</option>
-            </select>
-          </td>
-        `;
-        processedRequests.appendChild(tr);
-      });
+      // Filter nach Link
+      if (filter === 'linkvorhanden') {
+        filtered = filtered.filter(s => s.link && s.link.trim() !== '');
+      } else if (filter === 'linknicht') {
+        filtered = filtered.filter(s => !s.link || s.link.trim() === '');
+      }
 
-      // Event Listener für alle Dropdowns
-      document.querySelectorAll('select[data-id]').forEach(select => {
-        select.onchange = e => {
-          const id = Number(e.target.getAttribute('data-id'));
-          const value = e.target.value;
-          if (!value) return;
-          if (value === 'löschen') {
-            if (confirm('Willst du diesen Song wirklich löschen?')) {
-              songs = songs.filter(s => s.id !== id);
-            }
-          } else {
-            // Status ändern
-            songs = songs.map(s => s.id === id ? {...s, status: value} : s);
-          }
-          renderTables();
-        };
-      });
+      return filtered;
     }
 
-    loginForm.addEventListener('submit', e => {
-      e.preventDefault();
-      const pw = document.getElementById('password').value;
-      if (pw === PASSWORD) {
-        loginContainer.classList.add('hidden');
-        dashboard.classList.remove('hidden');
-        renderTables();
-      } else {
-        loginError.classList.remove('hidden');
+    function sortSongs(arr, criterion) {
+      const sorted = [...arr];
+      switch(criterion) {
+        case 'neuestes':
+          sorted.sort((a,b) => b.id - a.id);
+          break;
+        case 'ältestes':
+          sorted.sort((a,b) => a.id - b.id);
+          break;
+        case 'songname':
+          sorted.sort((a,b) => a.title.localeCompare(b.title));
+          break;
+        case 'interpret':
+          sorted.sort((a,b) => a.artist.localeCompare(b.artist));
+          break;
       }
-    });
-  </script>
-</body>
-</html>
+      return sorted;
+    }
+
+    function renderTables() {
+      // Neue Wünsche (offen)
+      let newSongs = songs.filter(s => s.status === 'offen');
+      newSongs = filterAndSort(newSongs, newSortSelect.value);
+      newSongs = sortSongs(newSongs, newSortSelect.value);
+
+      newRequests.innerHTML = '';
+      newSongs.forEach(song => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${song.title}</td>
+          <td>${song.artist}</td
