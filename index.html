@@ -2,114 +2,63 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Herder Nacht 2025 - Musikwunsch</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    iframe {
-      border-radius: 0.5rem;
-    }
-    /* Fester Button unten rechts */
-    #adminBtn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background-color: #059669; /* grün */
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 9999px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.3s;
-      z-index: 1000;
-    }
-    #adminBtn:hover {
-      background-color: #047857;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Herdernacht – Songwunsch</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script>
-    function handlePreview() {
-      const link = document.getElementById('link').value.trim();
-      const preview = document.getElementById('preview');
-      if (link.includes('youtube') || link.includes('youtu.be')) {
-        let videoId = null;
-        if (link.includes('v=')) {
-          videoId = link.split('v=')[1].split('&')[0];
-        } else if (link.includes('youtu.be')) {
-          videoId = link.split('youtu.be/')[1].split('?')[0];
-        }
-        if (videoId) {
-          preview.innerHTML = `<iframe width="100%" height="180" src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>`;
-          return;
-        }
-      } else if (link.includes('spotify')) {
-        const embedUrl = link.replace('/track/', '/embed/track/');
-        preview.innerHTML = `<iframe src="${embedUrl}" width="100%" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
-        return;
-      }
-      preview.innerHTML = '';
-    }
-
-    function handleSubmit(event) {
-      event.preventDefault();
-      const title = document.getElementById('songTitle').value.trim();
-      const artist = document.getElementById('artist').value.trim();
-      const link = document.getElementById('link').value.trim();
-      const reason = document.getElementById('reason').value.trim();
-      if (!title || !artist) {
-        alert('Bitte Songtitel und Künstler angeben.');
-        return;
-      }
-      alert(`Danke für deinen Wunsch:\n${title} – ${artist}\n${link ? 'Link: ' + link : ''}\n${reason ? 'Grund: ' + reason : ''}`);
-      // Später: Firebase speichern
-      document.getElementById('wishForm').reset();
-      document.getElementById('preview').innerHTML = '';
-    }
-
-    function goToAdmin() {
-      // Link zur Admin-Seite anpassen!
-      window.location.href = 'admin.html';
-    }
-    function goToStatus() {
-      // Link zur Status-Seite anpassen!
-      window.location.href = 'status.html';
-    }
+    const firebaseConfig = {
+      apiKey: "AIzaSyApqXsW-bTblW66DVMTw4S-dsND92-wBFQ",
+      authDomain: "herder-7dd17.firebaseapp.com",
+      projectId: "herder-7dd17",
+      storageBucket: "herder-7dd17.firebasestorage.app",
+      messagingSenderId: "472463332211",
+      appId: "1:472463332211:web:6b8ea4a8d1480792a62b06",
+      measurementId: "G-HR07N6LXGN"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
   </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
-  <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-    <h1 class="text-3xl font-bold mb-6 text-center">🎶 Musikwunsch Herder Nacht 2025</h1>
-    <form id="wishForm" onsubmit="handleSubmit(event)" class="space-y-4">
-      <div>
-        <label for="songTitle" class="block font-semibold mb-1">Songtitel *</label>
-        <input type="text" id="songTitle" placeholder="z. B. Blinding Lights" required
-               class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
-      </div>
-      <div>
-        <label for="artist" class="block font-semibold mb-1">Künstler:in *</label>
-        <input type="text" id="artist" placeholder="z. B. The Weeknd" required
-               class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
-      </div>
-      <div>
-        <label for="link" class="block font-semibold mb-1">YouTube-/Spotify-Link (optional)</label>
-        <input type="url" id="link" placeholder="https://..." oninput="handlePreview()"
-               class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
-      </div>
-      <div>
-        <label for="reason" class="block font-semibold mb-1">Warum dieser Song? (optional)</label>
-        <textarea id="reason" rows="3" placeholder="z. B. Stimmung, Insider, Klassenhit..."
-                  class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
-      </div>
-      <div id="preview" class="mb-4"></div>
-      <button type="submit" class="w-full bg-green-600 text-white py-3 rounded hover:bg-green-700 transition">Absenden</button>
-    </form>
-    <button onclick="goToStatus()" 
-            class="mt-4 w-full bg-gray-300 text-gray-800 py-2 rounded hover:bg-gray-400 transition">
-      Wünsche ansehen
-    </button>
-  </div>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-start p-6">
+  <h1 class="text-3xl font-bold mb-6 text-center">🎵 Herdernacht Songwunsch</h1>
+  <form id="songForm" class="w-full max-w-md space-y-4">
+    <input type="text" id="title" placeholder="Songtitel" required class="w-full p-2 rounded bg-gray-800 border border-gray-700" />
+    <input type="text" id="artist" placeholder="Interpret" required class="w-full p-2 rounded bg-gray-800 border border-gray-700" />
+    <input type="url" id="link" placeholder="YouTube-/Spotify-Link (optional)" class="w-full p-2 rounded bg-gray-800 border border-gray-700" />
+    <textarea id="reason" placeholder="Warum dieser Song? (optional)" class="w-full p-2 rounded bg-gray-800 border border-gray-700"></textarea>
+    <button type="submit" class="w-full p-2 bg-green-600 hover:bg-green-700 rounded">Absenden</button>
+  </form>
 
-  <button id="adminBtn" onclick="goToAdmin()">Technik Login</button>
+  <a href="status.html" class="mt-4 inline-block text-sm text-blue-400 hover:underline">🔎 Bisherige Wünsche ansehen</a>
+
+  <a href="admin.html" class="fixed bottom-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded shadow hover:bg-yellow-700 text-sm">🔒 Admin Login</a>
+
+  <script>
+    document.getElementById("songForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value.trim();
+      const artist = document.getElementById("artist").value.trim();
+      const link = document.getElementById("link").value.trim();
+      const reason = document.getElementById("reason").value.trim();
+
+      if (!title || !artist) return alert("Bitte Titel und Interpret eingeben.");
+
+      await db.collection("wuensche").add({
+        title,
+        artist,
+        link,
+        reason,
+        status: "offen",
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      alert("Songwunsch wurde eingereicht!");
+      document.getElementById("songForm").reset();
+    });
+  </script>
 </body>
 </html>
+
