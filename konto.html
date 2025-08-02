@@ -20,12 +20,35 @@
           <th class="border border-gray-600 px-4 py-2">Passwort</th>
           <th class="border border-gray-600 px-4 py-2">Letzter Login</th>
           <th class="border border-gray-600 px-4 py-2">Online</th>
+          <th class="border border-gray-600 px-4 py-2">Aktionen</th>
         </tr>
       </thead>
       <tbody id="usersBody" class="text-center"></tbody>
     </table>
 
     <p id="noUsersMsg" class="mt-6 text-center text-gray-400 hidden">Keine Benutzer gefunden.</p>
+
+    <button id="showAddFormBtn" class="mt-6 bg-green-600 hover:bg-green-700 px-4 py-2 rounded">
+      ➕ Neuen Benutzer hinzufügen
+    </button>
+
+    <form id="addUserForm" class="mt-6 bg-gray-800 p-4 rounded hidden max-w-md mx-auto">
+      <h2 class="text-xl font-semibold mb-4">Neuen Benutzer anlegen</h2>
+      <label class="block mb-2">
+        Benutzername:
+        <input type="text" id="newUsername" class="mt-1 p-2 w-full rounded text-black" required />
+      </label>
+      <label class="block mb-2">
+        Passwort:
+        <input type="text" id="newPassword" class="mt-1 p-2 w-full rounded text-black" required />
+      </label>
+      <label class="block mb-4">
+        Online:
+        <input type="checkbox" id="newOnline" class="ml-2" />
+      </label>
+      <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white">Benutzer speichern</button>
+      <button type="button" id="cancelAddUser" class="ml-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white">Abbrechen</button>
+    </form>
   </div>
 
   <script>
@@ -41,10 +64,25 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    const usersBody = document.getElementById("usersBody");
+    const noUsersMsg = document.getElementById("noUsersMsg");
+    const showAddFormBtn = document.getElementById("showAddFormBtn");
+    const addUserForm = document.getElementById("addUserForm");
+    const cancelAddUser = document.getElementById("cancelAddUser");
+
+    showAddFormBtn.onclick = () => {
+      addUserForm.classList.remove("hidden");
+      showAddFormBtn.classList.add("hidden");
+    };
+
+    cancelAddUser.onclick = () => {
+      addUserForm.reset();
+      addUserForm.classList.add("hidden");
+      showAddFormBtn.classList.remove("hidden");
+    };
+
     async function loadUsers() {
-      const tbody = document.getElementById("usersBody");
-      const noUsersMsg = document.getElementById("noUsersMsg");
-      tbody.innerHTML = "";
+      usersBody.innerHTML = "";
       noUsersMsg.classList.add("hidden");
 
       try {
@@ -61,17 +99,66 @@
           tr.className = "odd:bg-gray-800 even:bg-gray-700";
 
           const lastLogin = data.lastLogin ? new Date(data.lastLogin.seconds * 1000).toLocaleString() : "-";
-          const online = data.online ? "Ja" : "Nein";
+          const online = data.online ? true : false;
 
           tr.innerHTML = `
             <td class="border border-gray-600 px-4 py-2">${doc.id}</td>
-            <td class="border border-gray-600 px-4 py-2">${data.username || "-"}</td>
-            <td class="border border-gray-600 px-4 py-2">${data.passwort || "-"}</td>
+            <td class="border border-gray-600 px-4 py-2">
+              <input type="text" class="w-full bg-gray-700 text-white p-1 rounded" value="${data.username || ''}" />
+            </td>
+            <td class="border border-gray-600 px-4 py-2">
+              <input type="text" class="w-full bg-gray-700 text-white p-1 rounded" value="${data.passwort || ''}" />
+            </td>
             <td class="border border-gray-600 px-4 py-2">${lastLogin}</td>
-            <td class="border border-gray-600 px-4 py-2">${online}</td>
+            <td class="border border-gray-600 px-4 py-2">
+              <input type="checkbox" ${online ? "checked" : ""} />
+            </td>
+            <td class="border border-gray-600 px-4 py-2">
+              <button class="saveBtn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-white">Speichern</button>
+              <button class="deleteBtn bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-white ml-2">Löschen</button>
+            </td>
           `;
 
-          tbody.appendChild(tr);
+          // Save Button Event
+          tr.querySelector(".saveBtn").addEventListener("click", async () => {
+            const inputs = tr.querySelectorAll("input");
+            const newUsername = inputs[0].value.trim();
+            const newPassword = inputs[1].value.trim();
+            const newOnline = inputs[2].checked;
+
+            if (!newUsername || !newPassword) {
+              alert("Benutzername und Passwort dürfen nicht leer sein!");
+              return;
+            }
+
+            try {
+              await db.collection("users").doc(doc.id).update({
+                username: newUsername,
+                passwort: newPassword,
+                online: newOnline,
+                lastChange: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              alert("Benutzer aktualisiert!");
+              loadUsers();
+            } catch (e) {
+              alert("Fehler beim Aktualisieren: " + e.message);
+            }
+          });
+
+          // Delete Button Event
+          tr.querySelector(".deleteBtn").addEventListener("click", async () => {
+            if (confirm(`Benutzer "${doc.id}" wirklich löschen?`)) {
+              try {
+                await db.collection("users").doc(doc.id).delete();
+                alert("Benutzer gelöscht!");
+                loadUsers();
+              } catch (e) {
+                alert("Fehler beim Löschen: " + e.message);
+              }
+            }
+          });
+
+          usersBody.appendChild(tr);
         });
       } catch (error) {
         console.error("Fehler beim Laden der Benutzer:", error);
@@ -79,6 +166,35 @@
         noUsersMsg.classList.remove("hidden");
       }
     }
+
+    addUserForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("newUsername").value.trim();
+      const password = document.getElementById("newPassword").value.trim();
+      const online = document.getElementById("newOnline").checked;
+
+      if (!username || !password) {
+        alert("Benutzername und Passwort dürfen nicht leer sein!");
+        return;
+      }
+
+      try {
+        await db.collection("users").add({
+          username: username,
+          passwort: password,
+          online: online,
+          lastLogin: null,
+          lastChange: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert("Neuer Benutzer hinzugefügt!");
+        addUserForm.reset();
+        addUserForm.classList.add("hidden");
+        showAddFormBtn.classList.remove("hidden");
+        loadUsers();
+      } catch (e) {
+        alert("Fehler beim Hinzufügen: " + e.message);
+      }
+    });
 
     loadUsers();
   </script>
