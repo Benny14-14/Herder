@@ -30,7 +30,7 @@
       <input type="text" id="artist" placeholder="Interpret" required class="w-full p-2 rounded text-black" />
       <input type="url" id="link" placeholder="YouTube/Spotify-Link (optional)" class="w-full p-2 rounded text-black" />
       <textarea id="comment" placeholder="Kommentar (optional)" class="w-full p-2 rounded text-black"></textarea>
-      <button type="submit" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full">✅ Wunsch absenden</button>
+      <button type="submit" id="submit" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full">✅ Wunsch absenden</button>
     </form>
 
     <button onclick="location.href='status.html'" class="mt-4 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 w-full">📄 Bisherige Wünsche anzeigen</button>
@@ -44,22 +44,34 @@
       const artist = document.getElementById("artist").value;
       const link = document.getElementById("link").value;
       const comment = document.getElementById("comment").value;
+      const submitbtn = document.getElementById("submit");
 
-      await db.collection("wuensche").add({
-        title,
-        artist,
-        link,
-        comment,
-        status: "offen",
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        upvotes: 0,
-        downvotes: 0
-      });
+      if(link.includes("spotify") || link.includes("youtu") || link.includes("amazon") || link.includes("apple") || link.includes("soundcloud") ||  link == "") {
+        await db.collection("wuensche").add({
+          title,
+          artist,
+          link,
+          comment,
+          status: "offen",
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          upvotes: 0,
+          downvotes: 0
+        });
 
-      form.reset();
-      alert("Wunsch wurde eingereicht!");
+        form.reset();
+        alert("Wunsch wurde eingereicht!");
+      }  else {
+        submitbtn.textContent = "ungültiger Link"
+        submitbtn.style.color = "red"
+        console.log(typeof(link))
+        console.log(link)
+        setTimeout(() => {
+          submitbtn.textContent = "✅ Wunsch absenden";
+          submitbtn.style.color = "white";
+        }, "1000");
+  
+      }
     });
   </script>
 </body>
 </html>
-
